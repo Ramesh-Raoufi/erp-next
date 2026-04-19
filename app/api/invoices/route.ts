@@ -34,6 +34,7 @@ export async function POST(req: NextRequest) {
 
     // Calculate totals from items
     const parsedItems = (items as any[]).map((item: any) => ({
+      ...(item.productId ? { productId: Number(item.productId) } : {}),
       description: item.description,
       quantity: Number(item.quantity) || 1,
       unitPrice: Number(item.unitPrice) || 0,

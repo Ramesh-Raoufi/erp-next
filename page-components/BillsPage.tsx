@@ -1,9 +1,13 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
-import { Plus, Pencil, Trash2, RefreshCw, ArrowLeft, PlusCircle, X } from "lucide-react";
+import { Plus, RefreshCw, PlusCircle, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { api } from "@/lib/api";
+import { ProductSelector } from "@/components/ProductSelector";
+import { CrudLayout } from "@/components/layout/CrudLayout";
+import { PageTable, TableColumn } from "@/components/layout/PageTable";
+import { PageForm } from "@/components/layout/PageForm";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -13,6 +17,7 @@ type BillStatus = "draft" | "pending" | "paid" | "overdue";
 
 interface LineItem {
   id?: number;
+  productId?: number | null;
   description: string;
   quantity: number;
   unitPrice: number;
@@ -59,32 +64,19 @@ function StatusBadge({ status }: { status: BillStatus }) {
   );
 }
 
-const EMPTY_LINE: LineItem = { description: "", quantity: 1, unitPrice: 0, totalPrice: 0 };
+const EMPTY_LINE: LineItem = { productId: null, description: "", quantity: 1, unitPrice: 0, totalPrice: 0 };
 
 type FormState = {
   code: string; vendorId: string; dueDate: string;
-  status: string; description: string; tax: string;
+  status: string; description: string; taxPct: string;
 };
 
 const EMPTY_FORM: FormState = {
-  code: "", vendorId: "", dueDate: "", status: "draft", description: "", tax: "0",
+  code: "", vendorId: "", dueDate: "", status: "draft", description: "", taxPct: "0",
 };
 
-function SkeletonRows() {
-  return (
-    <>
-      {[1, 2, 3].map((i) => (
-        <tr key={i} className="border-t animate-pulse">
-          {[1, 2, 3, 4, 5, 6, 7].map((j) => (
-            <td key={j} className="px-4 py-3">
-              <div className="h-4 bg-muted rounded w-full" />
-            </td>
-          ))}
-        </tr>
-      ))}
-    </>
-  );
-}
+const inputCls = "w-full rounded-md border border-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary";
+const errInputCls = "w-full rounded-md border border-red-500 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary";
 
 export function BillsPage() {
   const [bills, setBills] = useState<Bill[]>([]);
@@ -132,7 +124,7 @@ export function BillsPage() {
       dueDate: bill.dueDate ? bill.dueDate.slice(0, 16) : "",
       status: bill.status,
       description: bill.description ?? "",
-      tax: bill.tax ?? "0",
+      taxPct: bill.tax ?? "0",
     });
     setItems(bill.items && bill.items.length > 0 ? bill.items.map((i) => ({ ...i })) : [{ ...EMPTY_LINE }]);
     setErrors({});
@@ -140,7 +132,7 @@ export function BillsPage() {
     setView("form");
   }
 
-  function updateItem(idx: number, field: keyof LineItem, value: string | number) {
+  function updateItem(idx: number, field: keyof LineItem, value: string | number | null) {
     setItems((prev) => prev.map((item, i) => {
       if (i !== idx) return item;
       const updated = { ...item, [field]: value };
@@ -149,11 +141,29 @@ export function BillsPage() {
     }));
   }
 
+  function selectProduct(idx: number, product: { id: number; name: string; price: string; unitMeasure?: string }) {
+    setItems((prev) => prev.map((item, i) => {
+      if (i !== idx) return item;
+      const unitPrice = Number(product.price) || 0;
+      return {
+        ...item,
+        productId: product.id,
+        description: product.name,
+        unitPrice,
+        totalPrice: (Number(item.quantity) || 1) * unitPrice,
+      };
+    }));
+  }
+
   function addItem() { setItems((prev) => [...prev, { ...EMPTY_LINE }]); }
-  function removeItem(idx: number) { setItems((prev) => prev.filter((_, i) => i !== idx)); }
+  function removeItem(idx: number) {
+    if (items.length <= 1) return;
+    setItems((prev) => prev.filter((_, i) => i !== idx));
+  }
 
   const subtotal = items.reduce((s, i) => s + (Number(i.totalPrice) || 0), 0);
-  const taxAmount = Number(form.tax) || 0;
+  const taxPct = Number(form.taxPct) || 0;
+  const taxAmount = (subtotal * taxPct) / 100;
   const total = subtotal + taxAmount;
 
   function validate() {
@@ -177,6 +187,7 @@ export function BillsPage() {
       ...(form.description ? { description: form.description } : {}),
       tax: taxAmount,
       items: items.filter((i) => i.description).map((i) => ({
+        ...(i.productId ? { productId: i.productId } : {}),
         description: i.description,
         quantity: Number(i.quantity),
         unitPrice: Number(i.unitPrice),
@@ -215,25 +226,24 @@ export function BillsPage() {
   // ──────────────────────────────────────────────────────────────
   if (view === "form") {
     return (
-      <div className="max-w-4xl mx-auto p-4 md:p-6 space-y-6">
-        <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm" onClick={() => setView("list")}>
-            <ArrowLeft className="h-4 w-4 mr-1" /> Back
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold">{editBill ? `Edit Bill #${editBill.id}` : "New Bill"}</h1>
-            <p className="text-sm text-muted-foreground">{editBill ? "Update bill details" : "Create a new vendor bill"}</p>
-          </div>
-        </div>
-
-        {/* Vendor Info */}
-        <div className="rounded-lg border p-5 space-y-4">
-          <h2 className="font-semibold text-base border-b pb-2">Vendor Info</h2>
+      <PageForm
+        title={editBill ? `Edit Bill #${editBill.id}` : "New Bill"}
+        onBack={() => setView("list")}
+        onSave={() => void handleSubmit()}
+        onCancel={() => setView("list")}
+        saving={saving}
+        saveLabel={editBill ? "Save Changes" : "Create Bill"}
+      >
+        {/* Bill Details */}
+        <div className="rounded-xl border bg-white shadow-sm p-5 space-y-4">
+          <h2 className="font-semibold text-base text-gray-800 border-b pb-2">Bill Details</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-1">Vendor <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-medium mb-1 text-gray-700">
+                Vendor <span className="text-red-500">*</span>
+              </label>
               <select
-                className={`w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary ${errors.vendorId ? "border-red-500" : "border-input"}`}
+                className={errors.vendorId ? errInputCls : inputCls}
                 value={form.vendorId}
                 onChange={(e) => setForm((f) => ({ ...f, vendorId: e.target.value }))}
               >
@@ -243,27 +253,27 @@ export function BillsPage() {
               {errors.vendorId && <p className="text-xs text-red-600 mt-1">{errors.vendorId}</p>}
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Code</label>
+              <label className="block text-sm font-medium mb-1 text-gray-700">Code</label>
               <input
-                type="text" placeholder="BILL-001"
-                className="w-full rounded-md border border-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                type="text" placeholder="BILL-001 (auto-generated if blank)"
+                className={inputCls}
                 value={form.code}
                 onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))}
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Due Date</label>
+              <label className="block text-sm font-medium mb-1 text-gray-700">Due Date</label>
               <input
                 type="datetime-local"
-                className="w-full rounded-md border border-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                className={inputCls}
                 value={form.dueDate}
                 onChange={(e) => setForm((f) => ({ ...f, dueDate: e.target.value }))}
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Status</label>
+              <label className="block text-sm font-medium mb-1 text-gray-700">Status</label>
               <select
-                className="w-full rounded-md border border-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                className={inputCls}
                 value={form.status}
                 onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}
               >
@@ -271,10 +281,10 @@ export function BillsPage() {
               </select>
             </div>
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium mb-1">Description</label>
+              <label className="block text-sm font-medium mb-1 text-gray-700">Description (optional)</label>
               <input
-                type="text"
-                className="w-full rounded-md border border-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                type="text" placeholder="General description for this bill…"
+                className={inputCls}
                 value={form.description}
                 onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
               />
@@ -283,31 +293,40 @@ export function BillsPage() {
         </div>
 
         {/* Line Items */}
-        <div className="rounded-lg border p-5 space-y-4">
+        <div className="rounded-xl border bg-white shadow-sm p-5 space-y-4">
           <div className="flex items-center justify-between border-b pb-2">
-            <h2 className="font-semibold text-base">Line Items</h2>
+            <h2 className="font-semibold text-base text-gray-800">Line Items</h2>
             <Button variant="outline" size="sm" onClick={addItem}>
               <PlusCircle className="h-4 w-4 mr-1" /> Add Item
             </Button>
           </div>
+
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b text-muted-foreground">
-                  <th className="text-left py-2 px-2 font-medium w-[40%]">Description</th>
-                  <th className="text-right py-2 px-2 font-medium w-[15%]">Qty</th>
-                  <th className="text-right py-2 px-2 font-medium w-[20%]">Unit Price</th>
-                  <th className="text-right py-2 px-2 font-medium w-[20%]">Total</th>
-                  <th className="w-[5%]" />
+                <tr className="border-b text-gray-500">
+                  <th className="text-left py-2 px-2 font-medium w-[22%]">Product (optional)</th>
+                  <th className="text-left py-2 px-2 font-medium w-[30%]">Description</th>
+                  <th className="text-right py-2 px-2 font-medium w-[12%]">Qty</th>
+                  <th className="text-right py-2 px-2 font-medium w-[16%]">Unit Price</th>
+                  <th className="text-right py-2 px-2 font-medium w-[14%]">Total</th>
+                  <th className="w-[6%]" />
                 </tr>
               </thead>
               <tbody>
                 {items.map((item, idx) => (
                   <tr key={idx} className="border-b last:border-0">
                     <td className="py-2 px-2">
+                      <ProductSelector
+                        value={item.productId ?? null}
+                        onChange={(p) => selectProduct(idx, p)}
+                        placeholder="Select…"
+                      />
+                    </td>
+                    <td className="py-2 px-2">
                       <input
-                        type="text" placeholder="Description…"
-                        className={`w-full rounded border px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-primary ${errors[`item_${idx}_desc`] ? "border-red-500" : "border-input"}`}
+                        type="text" placeholder="Description or service…"
+                        className={`w-full rounded border px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary ${errors[`item_${idx}_desc`] ? "border-red-500" : "border-input"}`}
                         value={item.description}
                         onChange={(e) => updateItem(idx, "description", e.target.value)}
                       />
@@ -316,7 +335,7 @@ export function BillsPage() {
                     <td className="py-2 px-2">
                       <input
                         type="number" min={1}
-                        className="w-full rounded border border-input px-2 py-1 text-sm text-right focus:outline-none focus:ring-1 focus:ring-primary"
+                        className="w-full rounded border border-input px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-primary"
                         value={item.quantity}
                         onChange={(e) => updateItem(idx, "quantity", Number(e.target.value))}
                       />
@@ -324,15 +343,21 @@ export function BillsPage() {
                     <td className="py-2 px-2">
                       <input
                         type="number" min={0} step="0.01"
-                        className="w-full rounded border border-input px-2 py-1 text-sm text-right focus:outline-none focus:ring-1 focus:ring-primary"
+                        className="w-full rounded border border-input px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-primary"
                         value={item.unitPrice}
                         onChange={(e) => updateItem(idx, "unitPrice", Number(e.target.value))}
                       />
                     </td>
-                    <td className="py-2 px-2 text-right font-medium">{Number(item.totalPrice).toFixed(2)}</td>
-                    <td className="py-2 px-2">
-                      <button type="button" title="Remove" onClick={() => removeItem(idx)}
-                        className="text-muted-foreground hover:text-red-600 transition-colors">
+                    <td className="py-2 px-2 text-right font-medium text-gray-700">
+                      ${Number(item.totalPrice).toFixed(2)}
+                    </td>
+                    <td className="py-2 px-2 text-center">
+                      <button
+                        type="button" title="Remove row"
+                        onClick={() => removeItem(idx)}
+                        disabled={items.length <= 1}
+                        className="text-gray-400 hover:text-red-600 disabled:opacity-30 transition-colors"
+                      >
                         <X className="h-4 w-4" />
                       </button>
                     </td>
@@ -342,127 +367,77 @@ export function BillsPage() {
             </table>
           </div>
 
+          {/* Totals */}
           <div className="flex justify-end pt-2">
-            <div className="w-64 space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Subtotal</span>
-                <span className="font-medium">{subtotal.toFixed(2)}</span>
+            <div className="w-72 space-y-2 text-sm">
+              <div className="flex justify-between text-gray-600">
+                <span>Subtotal</span>
+                <span className="font-medium">${subtotal.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">Tax</span>
+              <div className="flex justify-between items-center text-gray-600">
+                <span>Tax (%)</span>
                 <input
-                  type="number" min={0} step="0.01"
+                  type="number" min={0} max={100} step="0.1"
                   className="w-24 rounded border border-input px-2 py-1 text-sm text-right focus:outline-none focus:ring-1 focus:ring-primary"
-                  value={form.tax}
-                  onChange={(e) => setForm((f) => ({ ...f, tax: e.target.value }))}
+                  value={form.taxPct}
+                  onChange={(e) => setForm((f) => ({ ...f, taxPct: e.target.value }))}
                 />
               </div>
-              <div className="flex justify-between border-t pt-2 font-semibold text-base">
+              <div className="flex justify-between text-gray-600">
+                <span>Tax amount</span>
+                <span className="font-medium">${taxAmount.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between border-t pt-2 font-bold text-base text-gray-900">
                 <span>Total</span>
-                <span>{total.toFixed(2)}</span>
+                <span>${total.toFixed(2)}</span>
               </div>
             </div>
           </div>
         </div>
-
-        <div className="flex justify-end gap-3 pb-6">
-          <Button variant="outline" onClick={() => setView("list")} disabled={saving}>Cancel</Button>
-          <Button onClick={() => void handleSubmit()} disabled={saving}>
-            {saving ? "Saving…" : (editBill ? "Save Changes" : "Create Bill")}
-          </Button>
-        </div>
-      </div>
+      </PageForm>
     );
   }
 
   // ──────────────────────────────────────────────────────────────
   // LIST VIEW
   // ──────────────────────────────────────────────────────────────
-  return (
-    <div className="space-y-4 p-4 md:p-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Bills</h1>
-          <p className="text-sm text-muted-foreground">
-            Showing {bills.length} bill{bills.length !== 1 ? "s" : ""}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
-            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-          </Button>
-          <Button size="sm" onClick={openCreate}>
-            <Plus className="mr-1 h-4 w-4" /> New Bill
-          </Button>
-        </div>
-      </div>
+  const columns: TableColumn<Bill>[] = [
+    { key: "id", label: "#", width: "60px", render: (r) => <span className="font-mono text-xs text-gray-400">{r.id}</span> },
+    { key: "code", label: "Code", render: (r) => r.code ?? "—" },
+    { key: "vendor", label: "Vendor", render: (r) => r.vendor?.name ?? String(r.vendorId) },
+    { key: "subtotal", label: "Subtotal", align: "right", render: (r) => `$${Number(r.subtotal).toFixed(2)}` },
+    { key: "tax", label: "Tax", align: "right", render: (r) => `$${Number(r.tax).toFixed(2)}` },
+    { key: "total", label: "Total", align: "right", render: (r) => <span className="font-semibold">${Number(r.total).toFixed(2)}</span> },
+    { key: "dueDate", label: "Due Date", render: (r) => r.dueDate ? new Date(r.dueDate).toLocaleDateString() : "—" },
+    { key: "status", label: "Status", render: (r) => <StatusBadge status={r.status} /> },
+  ];
 
-      <div className="overflow-auto rounded-lg border">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/50">
-            <tr>
-              <th className="px-4 py-3 text-left font-medium">#</th>
-              <th className="px-4 py-3 text-left font-medium">Code</th>
-              <th className="px-4 py-3 text-left font-medium">Vendor</th>
-              <th className="px-4 py-3 text-right font-medium">Subtotal</th>
-              <th className="px-4 py-3 text-right font-medium">Tax</th>
-              <th className="px-4 py-3 text-right font-medium">Total</th>
-              <th className="px-4 py-3 text-left font-medium">Due Date</th>
-              <th className="px-4 py-3 text-left font-medium">Status</th>
-              <th className="px-4 py-3 text-left font-medium">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <SkeletonRows />
-            ) : bills.length === 0 ? (
-              <tr>
-                <td colSpan={9} className="px-4 py-16 text-center">
-                  <div className="flex flex-col items-center gap-3 text-muted-foreground">
-                    <svg className="h-12 w-12 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                    </svg>
-                    <p className="font-medium">No bills yet</p>
-                    <p className="text-sm">Add your first vendor bill to get started.</p>
-                    <Button size="sm" onClick={openCreate}><Plus className="mr-1 h-4 w-4" /> New Bill</Button>
-                  </div>
-                </td>
-              </tr>
-            ) : (
-              bills.map((bill) => (
-                <tr key={bill.id} className="border-t hover:bg-muted/30 transition-colors">
-                  <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{bill.id}</td>
-                  <td className="px-4 py-3">{bill.code ?? "—"}</td>
-                  <td className="px-4 py-3">{bill.vendor?.name ?? bill.vendorId}</td>
-                  <td className="px-4 py-3 text-right">{Number(bill.subtotal).toFixed(2)}</td>
-                  <td className="px-4 py-3 text-right">{Number(bill.tax).toFixed(2)}</td>
-                  <td className="px-4 py-3 text-right font-semibold">{Number(bill.total).toFixed(2)}</td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {bill.dueDate ? new Date(bill.dueDate).toLocaleDateString() : "—"}
-                  </td>
-                  <td className="px-4 py-3"><StatusBadge status={bill.status} /></td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-1">
-                      <Button variant="outline" size="sm" onClick={() => openEdit(bill)} title="Edit">
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline" size="sm"
-                        className="text-red-600 hover:text-red-700 border-red-200"
-                        onClick={() => setConfirmDelete({ id: bill.id, label: bill.code ? `Bill ${bill.code}` : `Bill #${bill.id}` })}
-                        title="Delete"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+  return (
+    <>
+      <CrudLayout
+        title="Bills"
+        subtitle={`${bills.length} bill${bills.length !== 1 ? "s" : ""}`}
+        actions={
+          <>
+            <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
+              <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            </Button>
+            <Button size="sm" onClick={openCreate}>
+              <Plus className="mr-1 h-4 w-4" /> New Bill
+            </Button>
+          </>
+        }
+      >
+        <PageTable
+          columns={columns}
+          data={bills}
+          loading={loading}
+          emptyMessage="No bills yet"
+          emptyAction={<Button size="sm" onClick={openCreate}><Plus className="mr-1 h-4 w-4" /> New Bill</Button>}
+          onEdit={openEdit}
+          onDelete={(bill) => setConfirmDelete({ id: bill.id, label: bill.code ? `Bill ${bill.code}` : `Bill #${bill.id}` })}
+        />
+      </CrudLayout>
 
       <AlertDialog open={!!confirmDelete} onOpenChange={(o) => !o && setConfirmDelete(null)}>
         <AlertDialogContent>
@@ -476,6 +451,6 @@ export function BillsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </>
   );
 }

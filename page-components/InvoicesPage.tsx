@@ -1,10 +1,14 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
-import { Printer, Plus, Pencil, Trash2, RefreshCw, ArrowLeft, PlusCircle, X } from "lucide-react";
+import { Printer, Plus, RefreshCw, PlusCircle, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { api } from "@/lib/api";
 import { InvoicePrintView } from "./InvoicePrintView";
+import { ProductSelector } from "@/components/ProductSelector";
+import { CrudLayout } from "@/components/layout/CrudLayout";
+import { PageTable, TableColumn } from "@/components/layout/PageTable";
+import { PageForm } from "@/components/layout/PageForm";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -14,6 +18,7 @@ type InvoiceStatus = "draft" | "sent" | "paid" | "overdue" | "cancelled";
 
 interface LineItem {
   id?: number;
+  productId?: number | null;
   description: string;
   quantity: number;
   unitPrice: number;
@@ -28,7 +33,7 @@ interface Invoice {
   subtotal: string;
   tax: string;
   total: string;
-  amount?: string; // kept for print view compatibility
+  amount?: string;
   dueDate?: string | null;
   status: InvoiceStatus;
   notes?: string | null;
@@ -65,34 +70,20 @@ function StatusBadge({ status }: { status: InvoiceStatus }) {
   );
 }
 
-const EMPTY_LINE: LineItem = { description: "", quantity: 1, unitPrice: 0, totalPrice: 0 };
+const EMPTY_LINE: LineItem = { productId: null, description: "", quantity: 1, unitPrice: 0, totalPrice: 0 };
 
 type FormState = {
   code: string; customerId: string; orderId: string; dueDate: string;
-  status: string; notes: string; tax: string;
+  status: string; notes: string; taxPct: string;
 };
 
 const EMPTY_FORM: FormState = {
   code: "", customerId: "", orderId: "", dueDate: "",
-  status: "draft", notes: "", tax: "0",
+  status: "draft", notes: "", taxPct: "0",
 };
 
-// ─── Skeleton rows ────────────────────────────────────────────
-function SkeletonRows() {
-  return (
-    <>
-      {[1, 2, 3].map((i) => (
-        <tr key={i} className="border-t animate-pulse">
-          {[1, 2, 3, 4, 5, 6, 7].map((j) => (
-            <td key={j} className="px-4 py-3">
-              <div className="h-4 bg-muted rounded w-full" />
-            </td>
-          ))}
-        </tr>
-      ))}
-    </>
-  );
-}
+const inputCls = "w-full rounded-md border border-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary";
+const errInputCls = "w-full rounded-md border border-red-500 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary";
 
 export function InvoicesPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -142,7 +133,7 @@ export function InvoicesPage() {
       dueDate: inv.dueDate ? inv.dueDate.slice(0, 16) : "",
       status: inv.status,
       notes: inv.notes ?? "",
-      tax: inv.tax ?? "0",
+      taxPct: inv.tax ?? "0",
     });
     setItems(inv.items && inv.items.length > 0 ? inv.items.map((i) => ({ ...i })) : [{ ...EMPTY_LINE }]);
     setErrors({});
@@ -150,27 +141,40 @@ export function InvoicesPage() {
     setView("form");
   }
 
-  // ─── Line item helpers ────────────────────────────────────────
-  function updateItem(idx: number, field: keyof LineItem, value: string | number) {
-    setItems((prev) => {
-      const next = prev.map((item, i) => {
-        if (i !== idx) return item;
-        const updated = { ...item, [field]: value };
-        updated.totalPrice = (Number(updated.quantity) || 0) * (Number(updated.unitPrice) || 0);
-        return updated;
-      });
-      return next;
-    });
+  function updateItem(idx: number, field: keyof LineItem, value: string | number | null) {
+    setItems((prev) => prev.map((item, i) => {
+      if (i !== idx) return item;
+      const updated = { ...item, [field]: value };
+      updated.totalPrice = (Number(updated.quantity) || 0) * (Number(updated.unitPrice) || 0);
+      return updated;
+    }));
+  }
+
+  function selectProduct(idx: number, product: { id: number; name: string; price: string; unitMeasure?: string }) {
+    setItems((prev) => prev.map((item, i) => {
+      if (i !== idx) return item;
+      const unitPrice = Number(product.price) || 0;
+      return {
+        ...item,
+        productId: product.id,
+        description: product.name,
+        unitPrice,
+        totalPrice: (Number(item.quantity) || 1) * unitPrice,
+      };
+    }));
   }
 
   function addItem() { setItems((prev) => [...prev, { ...EMPTY_LINE }]); }
-  function removeItem(idx: number) { setItems((prev) => prev.filter((_, i) => i !== idx)); }
+  function removeItem(idx: number) {
+    if (items.length <= 1) return;
+    setItems((prev) => prev.filter((_, i) => i !== idx));
+  }
 
   const subtotal = items.reduce((s, i) => s + (Number(i.totalPrice) || 0), 0);
-  const taxAmount = Number(form.tax) || 0;
+  const taxPct = Number(form.taxPct) || 0;
+  const taxAmount = (subtotal * taxPct) / 100;
   const total = subtotal + taxAmount;
 
-  // ─── Validation ───────────────────────────────────────────────
   function validate() {
     const e: Record<string, string> = {};
     if (!form.customerId) e.customerId = "Customer is required";
@@ -195,6 +199,7 @@ export function InvoicesPage() {
       ...(form.notes ? { notes: form.notes } : {}),
       tax: taxAmount,
       items: items.filter((i) => i.description).map((i) => ({
+        ...(i.productId ? { productId: i.productId } : {}),
         description: i.description,
         quantity: Number(i.quantity),
         unitPrice: Number(i.unitPrice),
@@ -238,25 +243,24 @@ export function InvoicesPage() {
   // ──────────────────────────────────────────────────────────────
   if (view === "form") {
     return (
-      <div className="max-w-4xl mx-auto p-4 md:p-6 space-y-6">
-        <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm" onClick={() => setView("list")}>
-            <ArrowLeft className="h-4 w-4 mr-1" /> Back
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold">{editInvoice ? `Edit Invoice #${editInvoice.id}` : "New Invoice"}</h1>
-            <p className="text-sm text-muted-foreground">{editInvoice ? "Update invoice details" : "Create a new customer invoice"}</p>
-          </div>
-        </div>
-
-        {/* Section: Customer Info */}
-        <div className="rounded-lg border p-5 space-y-4">
-          <h2 className="font-semibold text-base border-b pb-2">Customer Info</h2>
+      <PageForm
+        title={editInvoice ? `Edit Invoice #${editInvoice.id}` : "New Invoice"}
+        onBack={() => setView("list")}
+        onSave={() => void handleSubmit()}
+        onCancel={() => setView("list")}
+        saving={saving}
+        saveLabel={editInvoice ? "Save Changes" : "Create Invoice"}
+      >
+        {/* Invoice Details */}
+        <div className="rounded-xl border bg-white shadow-sm p-5 space-y-4">
+          <h2 className="font-semibold text-base text-gray-800 border-b pb-2">Invoice Details</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-1">Customer <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-medium mb-1 text-gray-700">
+                Customer <span className="text-red-500">*</span>
+              </label>
               <select
-                className={`w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary ${errors.customerId ? "border-red-500" : "border-input"}`}
+                className={errors.customerId ? errInputCls : inputCls}
                 value={form.customerId}
                 onChange={(e) => setForm((f) => ({ ...f, customerId: e.target.value }))}
               >
@@ -268,36 +272,27 @@ export function InvoicesPage() {
               {errors.customerId && <p className="text-xs text-red-600 mt-1">{errors.customerId}</p>}
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Code</label>
+              <label className="block text-sm font-medium mb-1 text-gray-700">Code</label>
               <input
-                type="text" placeholder="INV-001"
-                className="w-full rounded-md border border-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                type="text" placeholder="INV-001 (auto-generated if blank)"
+                className={inputCls}
                 value={form.code}
                 onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))}
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Order ID (optional)</label>
-              <input
-                type="number" placeholder="Order #"
-                className="w-full rounded-md border border-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                value={form.orderId}
-                onChange={(e) => setForm((f) => ({ ...f, orderId: e.target.value }))}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Due Date</label>
+              <label className="block text-sm font-medium mb-1 text-gray-700">Due Date</label>
               <input
                 type="datetime-local"
-                className="w-full rounded-md border border-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                className={inputCls}
                 value={form.dueDate}
                 onChange={(e) => setForm((f) => ({ ...f, dueDate: e.target.value }))}
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Status</label>
+              <label className="block text-sm font-medium mb-1 text-gray-700">Status</label>
               <select
-                className="w-full rounded-md border border-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                className={inputCls}
                 value={form.status}
                 onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}
               >
@@ -305,21 +300,21 @@ export function InvoicesPage() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Notes</label>
+              <label className="block text-sm font-medium mb-1 text-gray-700">Order ID (optional)</label>
               <input
-                type="text"
-                className="w-full rounded-md border border-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                value={form.notes}
-                onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+                type="number" placeholder="Order #"
+                className={inputCls}
+                value={form.orderId}
+                onChange={(e) => setForm((f) => ({ ...f, orderId: e.target.value }))}
               />
             </div>
           </div>
         </div>
 
-        {/* Section: Line Items */}
-        <div className="rounded-lg border p-5 space-y-4">
+        {/* Line Items */}
+        <div className="rounded-xl border bg-white shadow-sm p-5 space-y-4">
           <div className="flex items-center justify-between border-b pb-2">
-            <h2 className="font-semibold text-base">Line Items</h2>
+            <h2 className="font-semibold text-base text-gray-800">Line Items</h2>
             <Button variant="outline" size="sm" onClick={addItem}>
               <PlusCircle className="h-4 w-4 mr-1" /> Add Item
             </Button>
@@ -328,21 +323,29 @@ export function InvoicesPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b text-muted-foreground">
-                  <th className="text-left py-2 px-2 font-medium w-[40%]">Description</th>
-                  <th className="text-right py-2 px-2 font-medium w-[15%]">Qty</th>
-                  <th className="text-right py-2 px-2 font-medium w-[20%]">Unit Price</th>
-                  <th className="text-right py-2 px-2 font-medium w-[20%]">Total</th>
-                  <th className="w-[5%]" />
+                <tr className="border-b text-gray-500">
+                  <th className="text-left py-2 px-2 font-medium w-[22%]">Product</th>
+                  <th className="text-left py-2 px-2 font-medium w-[30%]">Description</th>
+                  <th className="text-right py-2 px-2 font-medium w-[12%]">Qty</th>
+                  <th className="text-right py-2 px-2 font-medium w-[16%]">Unit Price</th>
+                  <th className="text-right py-2 px-2 font-medium w-[14%]">Total</th>
+                  <th className="w-[6%]" />
                 </tr>
               </thead>
               <tbody>
                 {items.map((item, idx) => (
                   <tr key={idx} className="border-b last:border-0">
                     <td className="py-2 px-2">
+                      <ProductSelector
+                        value={item.productId ?? null}
+                        onChange={(p) => selectProduct(idx, p)}
+                        placeholder="Select…"
+                      />
+                    </td>
+                    <td className="py-2 px-2">
                       <input
                         type="text" placeholder="Description…"
-                        className={`w-full rounded border px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-primary ${errors[`item_${idx}_desc`] ? "border-red-500" : "border-input"}`}
+                        className={`w-full rounded border px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary ${errors[`item_${idx}_desc`] ? "border-red-500" : "border-input"}`}
                         value={item.description}
                         onChange={(e) => updateItem(idx, "description", e.target.value)}
                       />
@@ -351,7 +354,7 @@ export function InvoicesPage() {
                     <td className="py-2 px-2">
                       <input
                         type="number" min={1}
-                        className={`w-full rounded border px-2 py-1 text-sm text-right focus:outline-none focus:ring-1 focus:ring-primary ${errors[`item_${idx}_qty`] ? "border-red-500" : "border-input"}`}
+                        className={`w-full rounded border px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-primary ${errors[`item_${idx}_qty`] ? "border-red-500" : "border-input"}`}
                         value={item.quantity}
                         onChange={(e) => updateItem(idx, "quantity", Number(e.target.value))}
                       />
@@ -359,19 +362,20 @@ export function InvoicesPage() {
                     <td className="py-2 px-2">
                       <input
                         type="number" min={0} step="0.01"
-                        className={`w-full rounded border px-2 py-1 text-sm text-right focus:outline-none focus:ring-1 focus:ring-primary ${errors[`item_${idx}_price`] ? "border-red-500" : "border-input"}`}
+                        className={`w-full rounded border px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-primary ${errors[`item_${idx}_price`] ? "border-red-500" : "border-input"}`}
                         value={item.unitPrice}
                         onChange={(e) => updateItem(idx, "unitPrice", Number(e.target.value))}
                       />
                     </td>
-                    <td className="py-2 px-2 text-right font-medium">
-                      {Number(item.totalPrice).toFixed(2)}
+                    <td className="py-2 px-2 text-right font-medium text-gray-700">
+                      ${Number(item.totalPrice).toFixed(2)}
                     </td>
-                    <td className="py-2 px-2">
+                    <td className="py-2 px-2 text-center">
                       <button
-                        type="button" title="Remove"
+                        type="button" title="Remove row"
                         onClick={() => removeItem(idx)}
-                        className="text-muted-foreground hover:text-red-600 transition-colors"
+                        disabled={items.length <= 1}
+                        className="text-gray-400 hover:text-red-600 disabled:opacity-30 transition-colors"
                       >
                         <X className="h-4 w-4" />
                       </button>
@@ -384,134 +388,93 @@ export function InvoicesPage() {
 
           {/* Totals */}
           <div className="flex justify-end pt-2">
-            <div className="w-64 space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Subtotal</span>
-                <span className="font-medium">{subtotal.toFixed(2)}</span>
+            <div className="w-72 space-y-2 text-sm">
+              <div className="flex justify-between text-gray-600">
+                <span>Subtotal</span>
+                <span className="font-medium">${subtotal.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">Tax</span>
+              <div className="flex justify-between items-center text-gray-600">
+                <span>Tax (%)</span>
                 <input
-                  type="number" min={0} step="0.01"
+                  type="number" min={0} max={100} step="0.1"
                   className="w-24 rounded border border-input px-2 py-1 text-sm text-right focus:outline-none focus:ring-1 focus:ring-primary"
-                  value={form.tax}
-                  onChange={(e) => setForm((f) => ({ ...f, tax: e.target.value }))}
+                  value={form.taxPct}
+                  onChange={(e) => setForm((f) => ({ ...f, taxPct: e.target.value }))}
                 />
               </div>
-              <div className="flex justify-between border-t pt-2 font-semibold text-base">
+              <div className="flex justify-between text-gray-600">
+                <span>Tax amount</span>
+                <span className="font-medium">${taxAmount.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between border-t pt-2 font-bold text-base text-gray-900">
                 <span>Total</span>
-                <span>{total.toFixed(2)}</span>
+                <span>${total.toFixed(2)}</span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Save / Cancel */}
-        <div className="flex justify-end gap-3 pb-6">
-          <Button variant="outline" onClick={() => setView("list")} disabled={saving}>Cancel</Button>
-          <Button onClick={() => void handleSubmit()} disabled={saving}>
-            {saving ? "Saving…" : (editInvoice ? "Save Changes" : "Create Invoice")}
-          </Button>
+        {/* Notes */}
+        <div className="rounded-xl border bg-white shadow-sm p-5 space-y-3">
+          <h2 className="font-semibold text-base text-gray-800 border-b pb-2">Notes</h2>
+          <textarea
+            rows={3}
+            placeholder="Optional notes for this invoice…"
+            className="w-full rounded-md border border-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+            value={form.notes}
+            onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+          />
         </div>
-      </div>
+      </PageForm>
     );
   }
 
   // ──────────────────────────────────────────────────────────────
   // LIST VIEW
   // ──────────────────────────────────────────────────────────────
+  const columns: TableColumn<Invoice>[] = [
+    { key: "id", label: "#", width: "60px", render: (r) => <span className="font-mono text-xs text-gray-400">{r.id}</span> },
+    { key: "code", label: "Code", render: (r) => r.code ?? "—" },
+    { key: "customer", label: "Customer", render: (r) => r.customer ? customerName(r.customer.id) : String(r.customerId) },
+    { key: "subtotal", label: "Subtotal", align: "right", render: (r) => `$${Number(r.subtotal).toFixed(2)}` },
+    { key: "tax", label: "Tax", align: "right", render: (r) => `$${Number(r.tax).toFixed(2)}` },
+    { key: "total", label: "Total", align: "right", render: (r) => <span className="font-semibold">${Number(r.total).toFixed(2)}</span> },
+    { key: "dueDate", label: "Due Date", render: (r) => r.dueDate ? new Date(r.dueDate).toLocaleDateString() : "—" },
+    { key: "status", label: "Status", render: (r) => <StatusBadge status={r.status} /> },
+  ];
+
   return (
-    <div className="space-y-4 p-4 md:p-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Invoices</h1>
-          <p className="text-sm text-muted-foreground">
-            Showing {invoices.length} invoice{invoices.length !== 1 ? "s" : ""}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
-            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-          </Button>
-          <Button size="sm" onClick={openCreate}>
-            <Plus className="mr-1 h-4 w-4" /> New Invoice
-          </Button>
-        </div>
-      </div>
+    <>
+      <CrudLayout
+        title="Invoices"
+        subtitle={`${invoices.length} invoice${invoices.length !== 1 ? "s" : ""}`}
+        actions={
+          <>
+            <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
+              <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            </Button>
+            <Button size="sm" onClick={openCreate}>
+              <Plus className="mr-1 h-4 w-4" /> New Invoice
+            </Button>
+          </>
+        }
+      >
+        <PageTable
+          columns={columns}
+          data={invoices}
+          loading={loading}
+          emptyMessage="No invoices yet"
+          emptyAction={<Button size="sm" onClick={openCreate}><Plus className="mr-1 h-4 w-4" /> New Invoice</Button>}
+          onEdit={openEdit}
+          onDelete={(inv) => setConfirmDelete({ id: inv.id, label: inv.code ? `Invoice ${inv.code}` : `Invoice #${inv.id}` })}
+          actions={(inv) => (
+            <Button variant="outline" size="sm" onClick={() => setPrintInvoice(inv)} title="Print">
+              <Printer className="h-4 w-4" />
+            </Button>
+          )}
+        />
+      </CrudLayout>
 
-      <div className="overflow-auto rounded-lg border">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/50">
-            <tr>
-              <th className="px-4 py-3 text-left font-medium">#</th>
-              <th className="px-4 py-3 text-left font-medium">Code</th>
-              <th className="px-4 py-3 text-left font-medium">Customer</th>
-              <th className="px-4 py-3 text-right font-medium">Subtotal</th>
-              <th className="px-4 py-3 text-right font-medium">Tax</th>
-              <th className="px-4 py-3 text-right font-medium">Total</th>
-              <th className="px-4 py-3 text-left font-medium">Due Date</th>
-              <th className="px-4 py-3 text-left font-medium">Status</th>
-              <th className="px-4 py-3 text-left font-medium">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <SkeletonRows />
-            ) : invoices.length === 0 ? (
-              <tr>
-                <td colSpan={9} className="px-4 py-16 text-center">
-                  <div className="flex flex-col items-center gap-3 text-muted-foreground">
-                    <svg className="h-12 w-12 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    <p className="font-medium">No invoices yet</p>
-                    <p className="text-sm">Create your first invoice to get started.</p>
-                    <Button size="sm" onClick={openCreate}><Plus className="mr-1 h-4 w-4" /> New Invoice</Button>
-                  </div>
-                </td>
-              </tr>
-            ) : (
-              invoices.map((inv) => (
-                <tr key={inv.id} className="border-t hover:bg-muted/30 transition-colors">
-                  <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{inv.id}</td>
-                  <td className="px-4 py-3">{inv.code ?? "—"}</td>
-                  <td className="px-4 py-3">
-                    {inv.customer ? customerName(inv.customer.id) : inv.customerId}
-                  </td>
-                  <td className="px-4 py-3 text-right">{Number(inv.subtotal).toFixed(2)}</td>
-                  <td className="px-4 py-3 text-right">{Number(inv.tax).toFixed(2)}</td>
-                  <td className="px-4 py-3 text-right font-semibold">{Number(inv.total).toFixed(2)}</td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {inv.dueDate ? new Date(inv.dueDate).toLocaleDateString() : "—"}
-                  </td>
-                  <td className="px-4 py-3"><StatusBadge status={inv.status} /></td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-1">
-                      <Button variant="outline" size="sm" onClick={() => setPrintInvoice(inv)} title="Print">
-                        <Printer className="h-4 w-4" />
-                      </Button>
-                      <Button variant="outline" size="sm" onClick={() => openEdit(inv)} title="Edit">
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline" size="sm"
-                        className="text-red-600 hover:text-red-700 border-red-200"
-                        onClick={() => setConfirmDelete({ id: inv.id, label: inv.code ? `Invoice ${inv.code}` : `Invoice #${inv.id}` })}
-                        title="Delete"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Delete confirm */}
       <AlertDialog open={!!confirmDelete} onOpenChange={(o) => !o && setConfirmDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -520,9 +483,7 @@ export function InvoicesPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => confirmDelete && void handleDelete(confirmDelete.id)}>
-              Delete
-            </AlertDialogAction>
+            <AlertDialogAction onClick={() => confirmDelete && void handleDelete(confirmDelete.id)}>Delete</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -530,6 +491,6 @@ export function InvoicesPage() {
       {printInvoice && (
         <InvoicePrintView invoice={{ ...printInvoice, amount: printInvoice.total }} onClose={() => setPrintInvoice(null)} />
       )}
-    </div>
+    </>
   );
 }
