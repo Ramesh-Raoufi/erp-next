@@ -121,6 +121,10 @@ model Product {
   unitMeasure        UnitMeasure? @relation(fields: [unitMeasureId], references: [id])
   orderItems         OrderItem[]
   purchaseOrderItems PurchaseOrderItem[]
+  invoiceItems       InvoiceItem[]
+  billItems          BillItem[]
+  inventory          Inventory?
+  inventoryJournal   InventoryJournal[]
 
   @@index([unitMeasureId])
   @@map("products")
@@ -327,6 +331,8 @@ model UnitMeasure {
   relatedUnits UnitMeasure[] @relation("UnitMeasureBase")
   products    Product[]
   orderItems  OrderItem[]
+  invoiceItems InvoiceItem[]
+  billItems    BillItem[]
 
   @@index([baseUnitId])
   @@map("unit_measures")
@@ -383,7 +389,6 @@ model Bill {
   code        String?    @unique
   vendorId    Int        @map("vendor_id")
   subtotal    Decimal    @default(0)
-  tax         Decimal    @default(0)
   total       Decimal    @default(0)
   dueDate     DateTime?  @map("due_date")
   status      BillStatus @default(draft)
@@ -401,18 +406,23 @@ model Bill {
 }
 
 model BillItem {
-  id          Int      @id @default(autoincrement())
-  billId      Int      @map("bill_id")
-  description String
-  quantity    Int      @default(1)
-  unitPrice   Decimal  @map("unit_price")
-  totalPrice  Decimal  @map("total_price")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id            Int          @id @default(autoincrement())
+  billId        Int          @map("bill_id")
+  productId     Int?         @map("product_id")
+  quantity      Int          @default(1)
+  unitPrice     Decimal      @map("unit_price")
+  totalPrice    Decimal      @map("total_price")
+  unitMeasureId Int?         @map("unit_measure_id")
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
 
-  bill        Bill     @relation(fields: [billId], references: [id])
+  bill        Bill         @relation(fields: [billId], references: [id])
+  product     Product?     @relation(fields: [productId], references: [id])
+  unitMeasure UnitMeasure? @relation(fields: [unitMeasureId], references: [id])
 
   @@index([billId])
+  @@index([productId])
+  @@index([unitMeasureId])
   @@map("bill_items")
 }
 
@@ -422,7 +432,6 @@ model Invoice {
   customerId Int           @map("customer_id")
   orderId    Int?          @map("order_id")
   subtotal   Decimal       @default(0)
-  tax        Decimal       @default(0)
   total      Decimal       @default(0)
   dueDate    DateTime?     @map("due_date")
   status     InvoiceStatus @default(draft)
@@ -442,18 +451,23 @@ model Invoice {
 }
 
 model InvoiceItem {
-  id          Int      @id @default(autoincrement())
-  invoiceId   Int      @map("invoice_id")
-  description String
-  quantity    Int      @default(1)
-  unitPrice   Decimal  @map("unit_price")
-  totalPrice  Decimal  @map("total_price")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id            Int          @id @default(autoincrement())
+  invoiceId     Int          @map("invoice_id")
+  productId     Int?         @map("product_id")
+  quantity      Int          @default(1)
+  unitPrice     Decimal      @map("unit_price")
+  totalPrice    Decimal      @map("total_price")
+  unitMeasureId Int?         @map("unit_measure_id")
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
 
-  invoice     Invoice  @relation(fields: [invoiceId], references: [id])
+  invoice     Invoice      @relation(fields: [invoiceId], references: [id])
+  product     Product?     @relation(fields: [productId], references: [id])
+  unitMeasure UnitMeasure? @relation(fields: [unitMeasureId], references: [id])
 
   @@index([invoiceId])
+  @@index([productId])
+  @@index([unitMeasureId])
   @@map("invoice_items")
 }
 
@@ -533,4 +547,62 @@ model OrderItem {
   @@index([productId])
   @@index([unitMeasureId])
   @@map("order_items")
+}
+
+enum InventoryMovementType {
+  receive
+  exit
+  transfer
+  adjustment
+}
+
+model Inventory {
+  id          Int      @id @default(autoincrement())
+  productId   Int      @unique @map("product_id")
+  quantity    Int      @default(0)
+  minQuantity Int      @default(0) @map("min_quantity")
+  maxQuantity Int?     @map("max_quantity")
+  location    String?
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  product    Product             @relation(fields: [productId], references: [id])
+  movements  InventoryMovement[]
+
+  @@map("inventory")
+}
+
+model InventoryMovement {
+  id           Int                   @id @default(autoincrement())
+  code         String?               @unique
+  inventoryId  Int                   @map("inventory_id")
+  type         InventoryMovementType
+  quantity     Int
+  fromLocation String?               @map("from_location")
+  toLocation   String?               @map("to_location")
+  reference    String?
+  notes        String?
+  createdAt    DateTime              @default(now()) @map("created_at")
+
+  inventory    Inventory             @relation(fields: [inventoryId], references: [id])
+
+  @@index([inventoryId])
+  @@map("inventory_movements")
+}
+
+model InventoryJournal {
+  id             Int                   @id @default(autoincrement())
+  code           String?               @unique
+  productId      Int                   @map("product_id")
+  type           InventoryMovementType
+  quantity       Int
+  quantityBefore Int                   @map("quantity_before")
+  quantityAfter  Int                   @map("quantity_after")
+  reference      String?
+  notes          String?
+  createdAt      DateTime              @default(now()) @map("created_at")
+
+  product        Product               @relation(fields: [productId], references: [id])
+
+  @@index([productId])
+  @@map("inventory_journal")
 }

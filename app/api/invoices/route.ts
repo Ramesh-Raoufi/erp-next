@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
       include: {
         customer: { select: { id: true, name: true, lastName: true, email: true, phone: true } },
         order: { select: { id: true, code: true, origin: true, destination: true } },
-        items: true,
+        items: { include: { product: { select: { id: true, name: true, code: true } }, unitMeasure: { select: { id: true, name: true, code: true } } } },
       },
     });
     return NextResponse.json(rows);
@@ -31,32 +31,30 @@ export async function POST(req: NextRequest) {
     if (invoiceData.orderId) invoiceData.orderId = Number(invoiceData.orderId) || null;
     if (invoiceData.dueDate) invoiceData.dueDate = new Date(invoiceData.dueDate);
     if (invoiceData.paidAt) invoiceData.paidAt = new Date(invoiceData.paidAt);
+    // Remove tax if present
+    delete invoiceData.tax;
 
-    // Calculate totals from items
     const parsedItems = (items as any[]).map((item: any) => ({
       ...(item.productId ? { productId: Number(item.productId) } : {}),
-      description: item.description,
+      ...(item.unitMeasureId ? { unitMeasureId: Number(item.unitMeasureId) } : {}),
       quantity: Number(item.quantity) || 1,
       unitPrice: Number(item.unitPrice) || 0,
       totalPrice: (Number(item.quantity) || 1) * (Number(item.unitPrice) || 0),
     }));
 
-    const subtotal = parsedItems.reduce((s: number, i: any) => s + i.totalPrice, 0);
-    const tax = Number(invoiceData.tax) || 0;
-    const total = subtotal + tax;
+    const total = parsedItems.reduce((s: number, i: any) => s + i.totalPrice, 0);
 
     const row = await prismaAny.invoice.create({
       data: {
         ...invoiceData,
-        subtotal,
-        tax,
+        subtotal: total,
         total,
         items: parsedItems.length > 0 ? { create: parsedItems } : undefined,
       },
       include: {
         customer: { select: { id: true, name: true, lastName: true } },
         order: { select: { id: true, code: true } },
-        items: true,
+        items: { include: { product: { select: { id: true, name: true } }, unitMeasure: { select: { id: true, name: true } } } },
       },
     });
     return NextResponse.json(row, { status: 201 });

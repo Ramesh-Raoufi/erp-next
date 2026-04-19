@@ -15,7 +15,12 @@ const includeRelations = {
       items: { include: { product: { select: { id: true, name: true } } } },
     },
   },
-  items: true,
+  items: {
+    include: {
+      product: { select: { id: true, name: true, code: true } },
+      unitMeasure: { select: { id: true, name: true, code: true } },
+    },
+  },
 };
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
@@ -39,26 +44,25 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     if ("orderId" in invoiceData) invoiceData.orderId = invoiceData.orderId ? Number(invoiceData.orderId) : null;
     if (invoiceData.dueDate) invoiceData.dueDate = new Date(invoiceData.dueDate);
     if (invoiceData.paidAt) invoiceData.paidAt = new Date(invoiceData.paidAt);
+    // Remove tax if present
+    delete invoiceData.tax;
 
-    // Fetch existing to detect paid transition
     const existing = await prismaAny.invoice.findFirst({ where: { id, deletedAt: null } });
     const becomingPaid = invoiceData.status === "paid" && existing?.status !== "paid";
     if (becomingPaid && !invoiceData.paidAt) invoiceData.paidAt = new Date();
 
-    // Handle items update
-    let subtotal = existing?.subtotal ? Number(existing.subtotal) : 0;
-    const tax = invoiceData.tax !== undefined ? Number(invoiceData.tax) : (existing?.tax ? Number(existing.tax) : 0);
+    let total = existing?.total ? Number(existing.total) : 0;
 
     if (items !== undefined) {
       const parsedItems = (items as any[]).map((item: any) => ({
-        description: item.description,
+        ...(item.productId ? { productId: Number(item.productId) } : {}),
+        ...(item.unitMeasureId ? { unitMeasureId: Number(item.unitMeasureId) } : {}),
         quantity: Number(item.quantity) || 1,
         unitPrice: Number(item.unitPrice) || 0,
         totalPrice: (Number(item.quantity) || 1) * (Number(item.unitPrice) || 0),
       }));
-      subtotal = parsedItems.reduce((s: number, i: any) => s + i.totalPrice, 0);
+      total = parsedItems.reduce((s: number, i: any) => s + i.totalPrice, 0);
 
-      // Replace items: delete old, create new
       await prismaAny.invoiceItem.deleteMany({ where: { invoiceId: id } });
       if (parsedItems.length > 0) {
         await prismaAny.invoiceItem.createMany({
@@ -67,10 +71,9 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       }
     }
 
-    const total = subtotal + tax;
     const row = await prismaAny.invoice.update({
       where: { id },
-      data: { ...invoiceData, subtotal, tax, total },
+      data: { ...invoiceData, subtotal: total, total },
       include: includeRelations,
     });
 

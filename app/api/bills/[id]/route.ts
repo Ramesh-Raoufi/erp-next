@@ -9,7 +9,12 @@ const prismaAny = prisma as any;
 
 const includeRelations = {
   vendor: { select: { id: true, name: true } },
-  items: true,
+  items: {
+    include: {
+      product: { select: { id: true, name: true, code: true } },
+      unitMeasure: { select: { id: true, name: true, code: true } },
+    },
+  },
 };
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
@@ -32,22 +37,24 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     if (billData.vendorId) billData.vendorId = Number(billData.vendorId);
     if (billData.dueDate) billData.dueDate = new Date(billData.dueDate);
     if (billData.paidAt) billData.paidAt = new Date(billData.paidAt);
+    // Remove tax if present
+    delete billData.tax;
 
     const existing = await prismaAny.bill.findFirst({ where: { id, deletedAt: null } });
     const becomingPaid = billData.status === "paid" && existing?.status !== "paid";
     if (becomingPaid && !billData.paidAt) billData.paidAt = new Date();
 
-    let subtotal = existing?.subtotal ? Number(existing.subtotal) : 0;
-    const tax = billData.tax !== undefined ? Number(billData.tax) : (existing?.tax ? Number(existing.tax) : 0);
+    let total = existing?.total ? Number(existing.total) : 0;
 
     if (items !== undefined) {
       const parsedItems = (items as any[]).map((item: any) => ({
-        description: item.description,
+        ...(item.productId ? { productId: Number(item.productId) } : {}),
+        ...(item.unitMeasureId ? { unitMeasureId: Number(item.unitMeasureId) } : {}),
         quantity: Number(item.quantity) || 1,
         unitPrice: Number(item.unitPrice) || 0,
         totalPrice: (Number(item.quantity) || 1) * (Number(item.unitPrice) || 0),
       }));
-      subtotal = parsedItems.reduce((s: number, i: any) => s + i.totalPrice, 0);
+      total = parsedItems.reduce((s: number, i: any) => s + i.totalPrice, 0);
 
       await prismaAny.billItem.deleteMany({ where: { billId: id } });
       if (parsedItems.length > 0) {
@@ -57,10 +64,9 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       }
     }
 
-    const total = subtotal + tax;
     const row = await prismaAny.bill.update({
       where: { id },
-      data: { ...billData, subtotal, tax, total },
+      data: { ...billData, subtotal: total, total },
       include: includeRelations,
     });
 

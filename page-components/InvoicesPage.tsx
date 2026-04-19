@@ -1,13 +1,12 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
-import { Printer, Plus, RefreshCw, PlusCircle, X } from "lucide-react";
+import { Printer, Plus, RefreshCw, PlusCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { api } from "@/lib/api";
 import { fetchNextCode } from "@/lib/generateCode";
 import { SearchSelect } from "@/components/SearchSelect";
 import { InvoicePrintView } from "./InvoicePrintView";
-import { ProductSelector } from "@/components/ProductSelector";
 import { CrudLayout } from "@/components/layout/CrudLayout";
 import { PageTable, TableColumn } from "@/components/layout/PageTable";
 import { PageForm } from "@/components/layout/PageForm";
@@ -18,13 +17,11 @@ import {
 
 type InvoiceStatus = "draft" | "sent" | "paid" | "overdue" | "cancelled";
 
-interface LineItem {
-  id?: number;
-  productId?: number | null;
-  description: string;
-  quantity: number;
-  unitPrice: number;
-  totalPrice: number;
+interface InvoiceItem {
+  productId: string;
+  quantity: string;
+  unitPrice: string;
+  unitMeasureId: string;
 }
 
 interface Invoice {
@@ -33,9 +30,7 @@ interface Invoice {
   customerId: number;
   orderId?: number | null;
   subtotal: string;
-  tax: string;
   total: string;
-  amount?: string;
   dueDate?: string | null;
   status: InvoiceStatus;
   notes?: string | null;
@@ -43,10 +38,13 @@ interface Invoice {
   createdAt: string;
   customer?: { id: number; name: string; lastName?: string | null; email?: string | null; phone?: string | null };
   order?: { id: number; code?: string | null } | null;
-  items?: LineItem[];
+  items?: Array<{ id?: number; productId?: number | null; description?: string | null; quantity: number; unitPrice: string; totalPrice: string; unitMeasureId?: number | null; product?: { id: number; name: string } | null; unitMeasure?: { id: number; name: string } | null }>;
 }
 
 interface Customer { id: number; name: string; lastName?: string | null }
+interface Product { id: number; name: string; code?: string | null; price?: string; unitMeasureId?: number | null }
+interface UnitMeasure { id: number; name: string; code?: string | null }
+interface Order { id: number; code?: string | null }
 
 const STATUS_STYLES: Record<InvoiceStatus, string> = {
   draft: "bg-gray-100 text-gray-700",
@@ -72,30 +70,24 @@ function StatusBadge({ status }: { status: InvoiceStatus }) {
   );
 }
 
-const EMPTY_LINE: LineItem = { productId: null, description: "", quantity: 1, unitPrice: 0, totalPrice: 0 };
-
-type FormState = {
-  code: string; customerId: string; orderId: string; dueDate: string;
-  status: string; notes: string; taxPct: string;
-};
-
-const EMPTY_FORM: FormState = {
-  code: "", customerId: "", orderId: "", dueDate: "",
-  status: "draft", notes: "", taxPct: "0",
-};
-
+type FormState = { code: string; customerId: string; orderId: string; dueDate: string; status: string; notes: string };
+const EMPTY_FORM: FormState = { code: "", customerId: "", orderId: "", dueDate: "", status: "draft", notes: "" };
+const EMPTY_ITEM: InvoiceItem = { productId: "", quantity: "1", unitPrice: "", unitMeasureId: "" };
 const inputCls = "w-full rounded-md border border-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary";
-const errInputCls = "w-full rounded-md border border-red-500 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary";
+const formatDate = (s: string) => new Date(s).toLocaleDateString();
 
 export function InvoicesPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [unitMeasures, setUnitMeasures] = useState<UnitMeasure[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(false);
   const [printInvoice, setPrintInvoice] = useState<Invoice | null>(null);
   const [view, setView] = useState<"list" | "form">("list");
   const [editInvoice, setEditInvoice] = useState<Invoice | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
-  const [items, setItems] = useState<LineItem[]>([{ ...EMPTY_LINE }]);
+  const [items, setItems] = useState<InvoiceItem[]>([{ ...EMPTY_ITEM }]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [confirmDelete, setConfirmDelete] = useState<{ id: number; label: string } | null>(null);
   const [saving, setSaving] = useState(false);
@@ -104,12 +96,18 @@ export function InvoicesPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [inv, cust] = await Promise.all([
+      const [inv, cust, prods, units, ords] = await Promise.all([
         api.list<Invoice>("invoices"),
         api.list<Customer>("customers"),
+        api.list<Product>("products"),
+        api.list<UnitMeasure>("unit-measures"),
+        api.list<Order>("orders"),
       ]);
       setInvoices(inv);
       setCustomers(cust);
+      setProducts(prods);
+      setUnitMeasures(units);
+      setOrders(ords);
     } catch {
       toast({ message: "Failed to load invoices", variant: "error" });
     } finally {
@@ -122,7 +120,7 @@ export function InvoicesPage() {
   async function openCreate() {
     const nextCode = await fetchNextCode("invoices", "INV");
     setForm({ ...EMPTY_FORM, code: nextCode });
-    setItems([{ ...EMPTY_LINE }]);
+    setItems([{ ...EMPTY_ITEM }]);
     setErrors({});
     setEditInvoice(null);
     setView("form");
@@ -136,56 +134,46 @@ export function InvoicesPage() {
       dueDate: inv.dueDate ? inv.dueDate.slice(0, 16) : "",
       status: inv.status,
       notes: inv.notes ?? "",
-      taxPct: inv.tax ?? "0",
     });
-    setItems(inv.items && inv.items.length > 0 ? inv.items.map((i) => ({ ...i })) : [{ ...EMPTY_LINE }]);
+    const mappedItems: InvoiceItem[] = inv.items && inv.items.length > 0
+      ? inv.items.map((i) => ({
+          productId: i.productId ? String(i.productId) : "",
+          quantity: String(i.quantity),
+          unitPrice: String(Number(i.unitPrice)),
+          unitMeasureId: i.unitMeasureId ? String(i.unitMeasureId) : "",
+        }))
+      : [{ ...EMPTY_ITEM }];
+    setItems(mappedItems);
     setErrors({});
     setEditInvoice(inv);
     setView("form");
   }
 
-  function updateItem(idx: number, field: keyof LineItem, value: string | number | null) {
+  function updateItem(idx: number, patch: Partial<InvoiceItem>) {
     setItems((prev) => prev.map((item, i) => {
       if (i !== idx) return item;
-      const updated = { ...item, [field]: value };
-      updated.totalPrice = (Number(updated.quantity) || 0) * (Number(updated.unitPrice) || 0);
+      const updated = { ...item, ...patch };
+      if (patch.productId !== undefined) {
+        const p = products.find((p) => String(p.id) === patch.productId);
+        if (p) {
+          if (!updated.unitPrice) updated.unitPrice = p.price ?? "";
+          if (p.unitMeasureId && !updated.unitMeasureId) updated.unitMeasureId = String(p.unitMeasureId);
+        }
+      }
       return updated;
     }));
   }
 
-  function selectProduct(idx: number, product: { id: number; name: string; price: string; unitMeasure?: string }) {
-    setItems((prev) => prev.map((item, i) => {
-      if (i !== idx) return item;
-      const unitPrice = Number(product.price) || 0;
-      return {
-        ...item,
-        productId: product.id,
-        description: product.name,
-        unitPrice,
-        totalPrice: (Number(item.quantity) || 1) * unitPrice,
-      };
-    }));
-  }
-
-  function addItem() { setItems((prev) => [...prev, { ...EMPTY_LINE }]); }
-  function removeItem(idx: number) {
-    if (items.length <= 1) return;
-    setItems((prev) => prev.filter((_, i) => i !== idx));
-  }
-
-  const subtotal = items.reduce((s, i) => s + (Number(i.totalPrice) || 0), 0);
-  const taxPct = Number(form.taxPct) || 0;
-  const taxAmount = (subtotal * taxPct) / 100;
-  const total = subtotal + taxAmount;
+  const totalAmount = items.reduce((sum, i) => {
+    const qty = Number(i.quantity); const price = Number(i.unitPrice);
+    return sum + (Number.isFinite(qty) && Number.isFinite(price) ? qty * price : 0);
+  }, 0);
 
   function validate() {
     const e: Record<string, string> = {};
     if (!form.customerId) e.customerId = "Customer is required";
-    items.forEach((item, idx) => {
-      if (!item.description) e[`item_${idx}_desc`] = "Description required";
-      if (Number(item.quantity) <= 0) e[`item_${idx}_qty`] = "Qty must be > 0";
-      if (Number(item.unitPrice) < 0) e[`item_${idx}_price`] = "Price must be ≥ 0";
-    });
+    const validItems = items.filter((i) => i.productId);
+    if (validItems.length === 0) e.items = "Add at least one item";
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -193,20 +181,22 @@ export function InvoicesPage() {
   async function handleSubmit() {
     if (!validate()) return;
     setSaving(true);
-    const body = {
+    const itemPayload = items
+      .filter((i) => i.productId)
+      .map((i) => ({
+        ...(i.productId ? { productId: Number(i.productId) } : {}),
+        quantity: Number(i.quantity),
+        unitPrice: Number(i.unitPrice) || 0,
+        ...(i.unitMeasureId ? { unitMeasureId: Number(i.unitMeasureId) } : {}),
+      }));
+    const body: Record<string, unknown> = {
       ...(form.code ? { code: form.code } : {}),
       customerId: Number(form.customerId),
       ...(form.orderId ? { orderId: Number(form.orderId) } : { orderId: null }),
       ...(form.dueDate ? { dueDate: form.dueDate } : {}),
       status: form.status,
       ...(form.notes ? { notes: form.notes } : {}),
-      tax: taxAmount,
-      items: items.filter((i) => i.description).map((i) => ({
-        ...(i.productId ? { productId: i.productId } : {}),
-        description: i.description,
-        quantity: Number(i.quantity),
-        unitPrice: Number(i.unitPrice),
-      })),
+      items: itemPayload,
     };
     try {
       if (editInvoice) {
@@ -236,11 +226,6 @@ export function InvoicesPage() {
     setConfirmDelete(null);
   }
 
-  const customerName = (id: number) => {
-    const c = customers.find((c) => c.id === id);
-    return c ? `${c.name}${c.lastName ? " " + c.lastName : ""}` : String(id);
-  };
-
   // ──────────────────────────────────────────────────────────────
   // FORM VIEW
   // ──────────────────────────────────────────────────────────────
@@ -252,16 +237,29 @@ export function InvoicesPage() {
         onSave={() => void handleSubmit()}
         onCancel={() => setView("list")}
         saving={saving}
-        saveLabel={editInvoice ? "Save Changes" : "Create Invoice"}
+        saveLabel={editInvoice ? "Save Changes" : "Save Invoice"}
       >
-        {/* Invoice Details */}
+        {/* Invoice Header */}
         <div className="rounded-xl border bg-white shadow-sm p-5 space-y-4">
-          <h2 className="font-semibold text-base text-gray-800 border-b pb-2">Invoice Details</h2>
+          <h2 className="font-semibold text-base text-gray-800 border-b pb-2 uppercase tracking-wide text-xs text-gray-500">Invoice Header</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-1 text-gray-700">
-                Customer <span className="text-red-500">*</span>
-              </label>
+              <label className="block text-sm font-medium mb-1 text-gray-700">Code</label>
+              <input
+                type="text" placeholder="INV-001"
+                className={inputCls}
+                value={form.code}
+                onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1 text-gray-700">Status</label>
+              <select className={inputCls} value={form.status} onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}>
+                {STATUS_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1 text-gray-700">Customer <span className="text-red-500">*</span></label>
               <SearchSelect
                 options={customers.map((c) => ({ value: c.id, label: `${c.name}${c.lastName ? " " + c.lastName : ""}` }))}
                 value={form.customerId ? Number(form.customerId) : null}
@@ -273,40 +271,17 @@ export function InvoicesPage() {
               {errors.customerId && <p className="text-xs text-red-600 mt-1">{errors.customerId}</p>}
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1 text-gray-700">Code</label>
-              <input
-                type="text" placeholder="INV-001 (auto-generated if blank)"
-                className={inputCls}
-                value={form.code}
-                onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))}
-              />
-            </div>
-            <div>
               <label className="block text-sm font-medium mb-1 text-gray-700">Due Date</label>
-              <input
-                type="datetime-local"
-                className={inputCls}
-                value={form.dueDate}
-                onChange={(e) => setForm((f) => ({ ...f, dueDate: e.target.value }))}
-              />
+              <input type="date" className={inputCls} value={form.dueDate} onChange={(e) => setForm((f) => ({ ...f, dueDate: e.target.value }))} />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1 text-gray-700">Status</label>
-              <select
-                className={inputCls}
-                value={form.status}
-                onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}
-              >
-                {STATUS_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1 text-gray-700">Order ID (optional)</label>
-              <input
-                type="number" placeholder="Order #"
-                className={inputCls}
-                value={form.orderId}
-                onChange={(e) => setForm((f) => ({ ...f, orderId: e.target.value }))}
+              <label className="block text-sm font-medium mb-1 text-gray-700">Linked Order (optional)</label>
+              <SearchSelect
+                options={orders.map((o) => ({ value: o.id, label: o.code ? `Order ${o.code}` : `Order #${o.id}` }))}
+                value={form.orderId ? Number(form.orderId) : null}
+                onChange={(v) => setForm((f) => ({ ...f, orderId: v != null ? String(v) : "" }))}
+                placeholder="None"
+                clearable
               />
             </div>
           </div>
@@ -316,101 +291,87 @@ export function InvoicesPage() {
         <div className="rounded-xl border bg-white shadow-sm p-5 space-y-4">
           <div className="flex items-center justify-between border-b pb-2">
             <h2 className="font-semibold text-base text-gray-800">Line Items</h2>
-            <Button variant="outline" size="sm" onClick={addItem}>
-              <PlusCircle className="h-4 w-4 mr-1" /> Add Item
+            <Button variant="outline" size="sm" onClick={() => setItems((p) => [...p, { ...EMPTY_ITEM }])}>
+              <PlusCircle className="h-4 w-4 mr-1" /> Add
             </Button>
           </div>
+          {errors.items && <p className="text-xs text-red-600">{errors.items}</p>}
 
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b text-gray-500">
-                  <th className="text-left py-2 px-2 font-medium w-[22%]">Product</th>
-                  <th className="text-left py-2 px-2 font-medium w-[30%]">Description</th>
-                  <th className="text-right py-2 px-2 font-medium w-[12%]">Qty</th>
-                  <th className="text-right py-2 px-2 font-medium w-[16%]">Unit Price</th>
-                  <th className="text-right py-2 px-2 font-medium w-[14%]">Total</th>
-                  <th className="w-[6%]" />
+                <tr className="border-b text-xs text-gray-500 uppercase tracking-wide">
+                  <th className="text-left py-2 px-2 font-medium w-6">#</th>
+                  <th className="text-left py-2 px-2 font-medium w-[30%]">Product</th>
+                  <th className="text-right py-2 px-2 font-medium w-20">Qty</th>
+                  <th className="text-right py-2 px-2 font-medium w-32">Unit Price</th>
+                  <th className="text-left py-2 px-2 font-medium w-[20%]">Unit</th>
+                  <th className="text-right py-2 px-2 font-medium w-28">Line Total</th>
+                  <th className="w-8" />
                 </tr>
               </thead>
               <tbody>
-                {items.map((item, idx) => (
-                  <tr key={idx} className="border-b last:border-0">
-                    <td className="py-2 px-2">
-                      <ProductSelector
-                        value={item.productId ?? null}
-                        onChange={(p) => selectProduct(idx, p)}
-                        placeholder="Select…"
-                      />
-                    </td>
-                    <td className="py-2 px-2">
-                      <input
-                        type="text" placeholder="Description…"
-                        className={`w-full rounded border px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary ${errors[`item_${idx}_desc`] ? "border-red-500" : "border-input"}`}
-                        value={item.description}
-                        onChange={(e) => updateItem(idx, "description", e.target.value)}
-                      />
-                      {errors[`item_${idx}_desc`] && <p className="text-xs text-red-600 mt-0.5">{errors[`item_${idx}_desc`]}</p>}
-                    </td>
-                    <td className="py-2 px-2">
-                      <input
-                        type="number" min={1}
-                        className={`w-full rounded border px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-primary ${errors[`item_${idx}_qty`] ? "border-red-500" : "border-input"}`}
-                        value={item.quantity}
-                        onChange={(e) => updateItem(idx, "quantity", Number(e.target.value))}
-                      />
-                    </td>
-                    <td className="py-2 px-2">
-                      <input
-                        type="number" min={0} step="0.01"
-                        className={`w-full rounded border px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-primary ${errors[`item_${idx}_price`] ? "border-red-500" : "border-input"}`}
-                        value={item.unitPrice}
-                        onChange={(e) => updateItem(idx, "unitPrice", Number(e.target.value))}
-                      />
-                    </td>
-                    <td className="py-2 px-2 text-right font-medium text-gray-700">
-                      ${Number(item.totalPrice).toFixed(2)}
-                    </td>
-                    <td className="py-2 px-2 text-center">
-                      <button
-                        type="button" title="Remove row"
-                        onClick={() => removeItem(idx)}
-                        disabled={items.length <= 1}
-                        className="text-gray-400 hover:text-red-600 disabled:opacity-30 transition-colors"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {items.map((item, idx) => {
+                  const lineTotal = (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0);
+                  return (
+                    <tr key={idx} className="border-b last:border-0 hover:bg-gray-50/50">
+                      <td className="py-2 px-2 text-gray-400 text-xs">{idx + 1}</td>
+                      <td className="py-2 px-2">
+                        <SearchSelect
+                          options={products.map((p) => ({ value: p.id, label: p.name, sublabel: p.code ?? undefined }))}
+                          value={item.productId ? Number(item.productId) : null}
+                          onChange={(v) => updateItem(idx, { productId: v != null ? String(v) : "" })}
+                          placeholder="Select…"
+                          clearable
+                        />
+                      </td>
+                      <td className="py-2 px-2">
+                        <input
+                          type="number" min={1}
+                          className="w-full rounded border border-input px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-primary"
+                          value={item.quantity}
+                          onChange={(e) => updateItem(idx, { quantity: e.target.value })}
+                        />
+                      </td>
+                      <td className="py-2 px-2">
+                        <input
+                          type="number" min={0} step="0.01"
+                          className="w-full rounded border border-input px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-primary"
+                          value={item.unitPrice}
+                          onChange={(e) => updateItem(idx, { unitPrice: e.target.value })}
+                        />
+                      </td>
+                      <td className="py-2 px-2">
+                        <SearchSelect
+                          options={unitMeasures.map((u) => ({ value: u.id, label: u.name, sublabel: u.code ?? undefined }))}
+                          value={item.unitMeasureId ? Number(item.unitMeasureId) : null}
+                          onChange={(v) => updateItem(idx, { unitMeasureId: v != null ? String(v) : "" })}
+                          placeholder="—"
+                          clearable
+                        />
+                      </td>
+                      <td className="py-2 px-2 text-right font-medium text-gray-700 whitespace-nowrap">
+                        ${lineTotal.toFixed(2)}
+                      </td>
+                      <td className="py-2 px-2 text-center">
+                        <button
+                          type="button"
+                          onClick={() => items.length > 1 && setItems((p) => p.filter((_, i) => i !== idx))}
+                          disabled={items.length <= 1}
+                          className="text-gray-400 hover:text-red-600 disabled:opacity-30 transition-colors text-base leading-none"
+                        >✕</button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
 
-          {/* Totals */}
-          <div className="flex justify-end pt-2">
-            <div className="w-72 space-y-2 text-sm">
-              <div className="flex justify-between text-gray-600">
-                <span>Subtotal</span>
-                <span className="font-medium">${subtotal.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between items-center text-gray-600">
-                <span>Tax (%)</span>
-                <input
-                  type="number" min={0} max={100} step="0.1"
-                  className="w-24 rounded border border-input px-2 py-1 text-sm text-right focus:outline-none focus:ring-1 focus:ring-primary"
-                  value={form.taxPct}
-                  onChange={(e) => setForm((f) => ({ ...f, taxPct: e.target.value }))}
-                />
-              </div>
-              <div className="flex justify-between text-gray-600">
-                <span>Tax amount</span>
-                <span className="font-medium">${taxAmount.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between border-t pt-2 font-bold text-base text-gray-900">
-                <span>Total</span>
-                <span>${total.toFixed(2)}</span>
-              </div>
+          <div className="flex justify-end pt-2 border-t">
+            <div className="flex items-center gap-4 text-sm font-semibold text-gray-900">
+              <span className="text-gray-500 font-normal">Total</span>
+              <span className="text-lg">${totalAmount.toFixed(2)}</span>
             </div>
           </div>
         </div>
@@ -436,12 +397,11 @@ export function InvoicesPage() {
   const columns: TableColumn<Invoice>[] = [
     { key: "id", label: "#", width: "60px", render: (r) => <span className="font-mono text-xs text-gray-400">{r.id}</span> },
     { key: "code", label: "Code", render: (r) => r.code ?? "—" },
-    { key: "customer", label: "Customer", render: (r) => r.customer ? customerName(r.customer.id) : String(r.customerId) },
-    { key: "subtotal", label: "Subtotal", align: "right", render: (r) => `$${Number(r.subtotal).toFixed(2)}` },
-    { key: "tax", label: "Tax", align: "right", render: (r) => `$${Number(r.tax).toFixed(2)}` },
+    { key: "customer", label: "Customer", render: (r) => r.customer ? `${r.customer.name}${r.customer.lastName ? " " + r.customer.lastName : ""}` : String(r.customerId) },
     { key: "total", label: "Total", align: "right", render: (r) => <span className="font-semibold">${Number(r.total).toFixed(2)}</span> },
-    { key: "dueDate", label: "Due Date", render: (r) => r.dueDate ? new Date(r.dueDate).toLocaleDateString() : "—" },
     { key: "status", label: "Status", render: (r) => <StatusBadge status={r.status} /> },
+    { key: "dueDate", label: "Due Date", render: (r) => r.dueDate ? new Date(r.dueDate).toLocaleDateString() : "—" },
+    { key: "createdAt", label: "Created", render: (r) => formatDate(r.createdAt) },
   ];
 
   return (
@@ -454,9 +414,7 @@ export function InvoicesPage() {
             <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
               <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
             </Button>
-            <Button size="sm" onClick={openCreate}>
-              <Plus className="mr-1 h-4 w-4" /> New Invoice
-            </Button>
+            <Button size="sm" onClick={openCreate}><Plus className="mr-1 h-4 w-4" /> New Invoice</Button>
           </>
         }
       >

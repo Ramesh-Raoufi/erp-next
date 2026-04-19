@@ -31,6 +31,10 @@ import {
   ChevronRight,
   Box,
   LogOut,
+  Warehouse,
+  PackagePlus,
+  PackageMinus,
+  ArrowLeftRight,
 } from 'lucide-react';
 
 interface NavItem {
@@ -77,6 +81,16 @@ const navGroups: NavGroup[] = [
     items: [
       { label: 'Purchase Orders', to: '/app/purchase-orders', icon: ShoppingCart, roles: ['admin', 'accountant', 'operator'] },
       { label: 'Vendors', to: '/app/vendors', icon: Building2, roles: ['admin', 'accountant'] },
+    ],
+  },
+  {
+    label: 'Inventory',
+    items: [
+      { label: 'Stock Levels', to: '/app/inventory', icon: Warehouse },
+      { label: 'Receive Stock', to: '/app/inventory/receive', icon: PackagePlus },
+      { label: 'Exit Stock', to: '/app/inventory/exit', icon: PackageMinus },
+      { label: 'Transfer', to: '/app/inventory/transfer', icon: ArrowLeftRight },
+      { label: 'Journal', to: '/app/inventory/journal', icon: BookOpen },
     ],
   },
   {
