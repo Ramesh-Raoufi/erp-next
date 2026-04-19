@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
     const rows = await prismaAny.bill.findMany({
       where: { deletedAt: null },
       orderBy: { id: "desc" },
-      include: { vendor: { select: { id: true, name: true } } },
+      include: { vendor: { select: { id: true, name: true } }, items: true },
     });
     return NextResponse.json(rows);
   } catch (e) { return handleError(e); }
@@ -21,10 +21,33 @@ export async function POST(req: NextRequest) {
   try {
     getAuthUserId(req);
     const body = await req.json();
-    if (body.vendorId) body.vendorId = Number(body.vendorId);
-    if (body.dueDate) body.dueDate = new Date(body.dueDate);
-    if (body.paidAt) body.paidAt = new Date(body.paidAt);
-    const row = await prismaAny.bill.create({ data: body });
+    const { items = [], ...billData } = body;
+
+    if (billData.vendorId) billData.vendorId = Number(billData.vendorId);
+    if (billData.dueDate) billData.dueDate = new Date(billData.dueDate);
+    if (billData.paidAt) billData.paidAt = new Date(billData.paidAt);
+
+    const parsedItems = (items as any[]).map((item: any) => ({
+      description: item.description,
+      quantity: Number(item.quantity) || 1,
+      unitPrice: Number(item.unitPrice) || 0,
+      totalPrice: (Number(item.quantity) || 1) * (Number(item.unitPrice) || 0),
+    }));
+
+    const subtotal = parsedItems.reduce((s: number, i: any) => s + i.totalPrice, 0);
+    const tax = Number(billData.tax) || 0;
+    const total = subtotal + tax;
+
+    const row = await prismaAny.bill.create({
+      data: {
+        ...billData,
+        subtotal,
+        tax,
+        total,
+        items: parsedItems.length > 0 ? { create: parsedItems } : undefined,
+      },
+      include: { vendor: { select: { id: true, name: true } }, items: true },
+    });
     return NextResponse.json(row, { status: 201 });
   } catch (e) { return handleError(e); }
 }

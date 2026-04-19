@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/db/prisma";
 import { getAuthUserId, handleError } from "@/lib/api-helpers";
+import { accountingService } from "@/services/accounting.service";
 
 const prismaAny = prisma as any;
 
@@ -25,6 +26,7 @@ export async function POST(req: NextRequest) {
     if (body.invoiceId) body.invoiceId = Number(body.invoiceId) || null;
     if (body.paidAt) body.paidAt = new Date(body.paidAt);
     const row = await prismaAny.customerPayment.create({ data: body });
+    await accountingService.recordCustomerPayment(row.id, Number(body.amount) || 0);
     return NextResponse.json(row, { status: 201 });
   } catch (e) { return handleError(e); }
 }

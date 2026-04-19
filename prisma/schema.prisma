@@ -152,10 +152,36 @@ model Account {
   updatedAt      DateTime @updatedAt @map("updated_at")
   deletedAt      DateTime? @map("deleted_at")
 
-  accountType    AccountType @relation(fields: [accountTypeId], references: [id])
+  accountType    AccountType    @relation(fields: [accountTypeId], references: [id])
+  journalEntries JournalEntry[]
 
   @@index([accountTypeId])
   @@map("accounts")
+}
+
+enum JournalEntryType {
+  debit
+  credit
+}
+
+model JournalEntry {
+  id          Int              @id @default(autoincrement())
+  code        String?          @unique
+  date        DateTime         @default(now())
+  description String
+  accountId   Int              @map("account_id")
+  type        JournalEntryType
+  amount      Decimal
+  relatedType String?          @map("related_type")
+  relatedId   Int?             @map("related_id")
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+
+  account     Account          @relation(fields: [accountId], references: [id])
+
+  @@index([accountId])
+  @@index([relatedType, relatedId])
+  @@map("journal_entries")
 }
 
 model Order {
@@ -356,7 +382,9 @@ model Bill {
   id          Int        @id @default(autoincrement())
   code        String?    @unique
   vendorId    Int        @map("vendor_id")
-  amount      Decimal
+  subtotal    Decimal    @default(0)
+  tax         Decimal    @default(0)
+  total       Decimal    @default(0)
   dueDate     DateTime?  @map("due_date")
   status      BillStatus @default(draft)
   description String?
@@ -365,10 +393,27 @@ model Bill {
   updatedAt   DateTime   @updatedAt @map("updated_at")
   deletedAt   DateTime?  @map("deleted_at")
 
-  vendor Vendor @relation(fields: [vendorId], references: [id])
+  vendor Vendor     @relation(fields: [vendorId], references: [id])
+  items  BillItem[]
 
   @@index([vendorId])
   @@map("bills")
+}
+
+model BillItem {
+  id          Int      @id @default(autoincrement())
+  billId      Int      @map("bill_id")
+  description String
+  quantity    Int      @default(1)
+  unitPrice   Decimal  @map("unit_price")
+  totalPrice  Decimal  @map("total_price")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  bill        Bill     @relation(fields: [billId], references: [id])
+
+  @@index([billId])
+  @@map("bill_items")
 }
 
 model Invoice {
@@ -376,7 +421,9 @@ model Invoice {
   code       String?       @unique
   customerId Int           @map("customer_id")
   orderId    Int?          @map("order_id")
-  amount     Decimal
+  subtotal   Decimal       @default(0)
+  tax        Decimal       @default(0)
+  total      Decimal       @default(0)
   dueDate    DateTime?     @map("due_date")
   status     InvoiceStatus @default(draft)
   notes      String?
@@ -385,12 +432,29 @@ model Invoice {
   updatedAt  DateTime      @updatedAt @map("updated_at")
   deletedAt  DateTime?     @map("deleted_at")
 
-  customer Customer @relation(fields: [customerId], references: [id])
-  order    Order?   @relation(fields: [orderId], references: [id])
+  customer Customer      @relation(fields: [customerId], references: [id])
+  order    Order?        @relation(fields: [orderId], references: [id])
+  items    InvoiceItem[]
 
   @@index([customerId])
   @@index([orderId])
   @@map("invoices")
+}
+
+model InvoiceItem {
+  id          Int      @id @default(autoincrement())
+  invoiceId   Int      @map("invoice_id")
+  description String
+  quantity    Int      @default(1)
+  unitPrice   Decimal  @map("unit_price")
+  totalPrice  Decimal  @map("total_price")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id])
+
+  @@index([invoiceId])
+  @@map("invoice_items")
 }
 
 model PurchaseOrder {
