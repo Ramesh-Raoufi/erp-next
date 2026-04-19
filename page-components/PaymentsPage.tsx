@@ -4,6 +4,8 @@ import { Plus, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { api } from "@/lib/api";
+import { fetchNextCode } from "@/lib/generateCode";
+import { SearchSelect } from "@/components/SearchSelect";
 import { CrudLayout } from "@/components/layout/CrudLayout";
 import { PageTable, TableColumn } from "@/components/layout/PageTable";
 import { PageForm } from "@/components/layout/PageForm";
@@ -77,8 +79,9 @@ export function PaymentsPage() {
 
   useEffect(() => { void load(); }, [load]);
 
-  function openCreate() {
-    setForm({ ...EMPTY_FORM });
+  async function openCreate() {
+    const nextCode = await fetchNextCode("payments", "PAY");
+    setForm({ ...EMPTY_FORM, code: nextCode });
     setErrors({});
     setEditing(null);
     setView("form");
@@ -151,10 +154,14 @@ export function PaymentsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1 text-gray-700">Order <span className="text-red-500">*</span></label>
-              <select className={errors.orderId ? errInputCls : inputCls} value={form.orderId} onChange={(e) => setForm((f) => ({ ...f, orderId: e.target.value }))}>
-                <option value="">Select order…</option>
-                {orderRefs.map((o) => <option key={o.id} value={o.id}>{o.code ? `(${o.code}) ` : `#${o.id} `}{o.origin} → {o.destination}</option>)}
-              </select>
+              <SearchSelect
+                options={orderRefs.map((o) => ({ value: o.id, label: `${o.code ? `(${o.code}) ` : `#${o.id} `}${o.origin ?? ""} → ${o.destination ?? ""}` }))}
+                value={form.orderId ? Number(form.orderId) : null}
+                onChange={(v) => setForm((f) => ({ ...f, orderId: v != null ? String(v) : "" }))}
+                placeholder="Select order…"
+                hasError={!!errors.orderId}
+                clearable
+              />
               {errors.orderId && <p className="text-xs text-red-600 mt-1">{errors.orderId}</p>}
             </div>
             <div>

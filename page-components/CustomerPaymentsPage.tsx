@@ -4,6 +4,8 @@ import { Plus, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { api } from "@/lib/api";
+import { fetchNextCode } from "@/lib/generateCode";
+import { SearchSelect } from "@/components/SearchSelect";
 import { CrudLayout } from "@/components/layout/CrudLayout";
 import { PageTable, TableColumn } from "@/components/layout/PageTable";
 import { PageForm } from "@/components/layout/PageForm";
@@ -76,8 +78,9 @@ export function CustomerPaymentsPage() {
 
   useEffect(() => { void load(); }, [load]);
 
-  function openCreate() {
-    setForm({ ...EMPTY_FORM });
+  async function openCreate() {
+    const nextCode = await fetchNextCode("customer-payments", "CPAY");
+    setForm({ ...EMPTY_FORM, code: nextCode });
     setErrors({});
     setEditing(null);
     setView("form");
@@ -161,10 +164,14 @@ export function CustomerPaymentsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1 text-gray-700">Customer <span className="text-red-500">*</span></label>
-              <select className={errors.customerId ? errInputCls : inputCls} value={form.customerId} onChange={(e) => setForm((f) => ({ ...f, customerId: e.target.value }))}>
-                <option value="">Select customer…</option>
-                {customers.map((c) => <option key={c.id} value={c.id}>{c.name}{c.lastName ? ` ${c.lastName}` : ""}</option>)}
-              </select>
+              <SearchSelect
+                options={customers.map((c) => ({ value: c.id, label: `${c.name}${c.lastName ? " " + c.lastName : ""}` }))}
+                value={form.customerId ? Number(form.customerId) : null}
+                onChange={(v) => setForm((f) => ({ ...f, customerId: v != null ? String(v) : "" }))}
+                placeholder="Select customer…"
+                hasError={!!errors.customerId}
+                clearable
+              />
               {errors.customerId && <p className="text-xs text-red-600 mt-1">{errors.customerId}</p>}
             </div>
             <div>

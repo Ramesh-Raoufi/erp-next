@@ -4,6 +4,8 @@ import { Plus, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { api } from "@/lib/api";
+import { fetchNextCode } from "@/lib/generateCode";
+import { SearchSelect } from "@/components/SearchSelect";
 import { CrudLayout } from "@/components/layout/CrudLayout";
 import { PageTable, TableColumn } from "@/components/layout/PageTable";
 import { PageForm } from "@/components/layout/PageForm";
@@ -58,8 +60,9 @@ export function AccountsPage() {
 
   useEffect(() => { void load(); }, [load]);
 
-  function openCreate() {
-    setForm({ ...EMPTY_FORM });
+  async function openCreate() {
+    const nextCode = await fetchNextCode("accounts", "ACC");
+    setForm({ ...EMPTY_FORM, code: nextCode });
     setErrors({});
     setEditing(null);
     setView("form");
@@ -145,10 +148,13 @@ export function AccountsPage() {
             </div>
             <div>
               <label className="block text-sm font-medium mb-1 text-gray-700">Account Type</label>
-              <select className={inputCls} value={form.accountTypeId} onChange={(e) => setForm((f) => ({ ...f, accountTypeId: e.target.value }))}>
-                <option value="">— None —</option>
-                {accountTypes.map((at) => <option key={at.id} value={at.id}>{at.code ? `${at.code} ` : ""}{at.name}</option>)}
-              </select>
+              <SearchSelect
+                options={accountTypes.map((at) => ({ value: at.id, label: at.code ? `${at.code} ${at.name}` : at.name }))}
+                value={form.accountTypeId ? Number(form.accountTypeId) : null}
+                onChange={(v) => setForm((f) => ({ ...f, accountTypeId: v != null ? String(v) : "" }))}
+                placeholder="— None —"
+                clearable
+              />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1 text-gray-700">Balance</label>

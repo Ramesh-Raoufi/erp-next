@@ -4,6 +4,7 @@ import { Plus, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { api } from "@/lib/api";
+import { fetchNextCode } from "@/lib/generateCode";
 import { CrudLayout } from "@/components/layout/CrudLayout";
 import { PageTable, TableColumn } from "@/components/layout/PageTable";
 import { PageForm } from "@/components/layout/PageForm";
@@ -53,8 +54,9 @@ export function CustomersPage() {
 
   useEffect(() => { void load(); }, [load]);
 
-  function openCreate() {
-    setForm({ ...EMPTY_FORM });
+  async function openCreate() {
+    const nextCode = await fetchNextCode("customers", "CUST");
+    setForm({ ...EMPTY_FORM, code: nextCode });
     setErrors({});
     setEditing(null);
     setView("form");

@@ -4,6 +4,8 @@ import { Plus, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { api } from "@/lib/api";
+import { fetchNextCode } from "@/lib/generateCode";
+import { SearchSelect } from "@/components/SearchSelect";
 import { CrudLayout } from "@/components/layout/CrudLayout";
 import { PageTable, TableColumn } from "@/components/layout/PageTable";
 import { PageForm } from "@/components/layout/PageForm";
@@ -82,8 +84,9 @@ export function TransfersPage() {
 
   useEffect(() => { void load(); }, [load]);
 
-  function openCreate() {
-    setForm({ ...EMPTY_FORM });
+  async function openCreate() {
+    const nextCode = await fetchNextCode("transfers", "TRF");
+    setForm({ ...EMPTY_FORM, code: nextCode });
     setErrors({});
     setEditing(null);
     setView("form");
@@ -164,15 +167,19 @@ export function TransfersPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1 text-gray-700">Order <span className="text-red-500">*</span></label>
-              <select className={errors.orderId ? errInputCls : inputCls} value={form.orderId} onChange={(e) => setForm((f) => ({ ...f, orderId: e.target.value }))}>
-                <option value="">Select order…</option>
-                {orderRefs.map((o) => {
+              <SearchSelect
+                options={orderRefs.map((o) => {
                   const cust = o.customer;
                   const name = cust ? `${cust.name ?? ""}${cust.lastName ? " " + cust.lastName : ""}`.trim() : "";
                   const route = o.origin && o.destination ? ` — ${o.origin} → ${o.destination}` : "";
-                  return <option key={o.id} value={o.id}>{o.code ? `(${o.code})` : `#${o.id}`} {name}{route}</option>;
+                  return { value: o.id, label: `${o.code ? `(${o.code})` : `#${o.id}`} ${name}${route}`.trim() };
                 })}
-              </select>
+                value={form.orderId ? Number(form.orderId) : null}
+                onChange={(v) => setForm((f) => ({ ...f, orderId: v != null ? String(v) : "" }))}
+                placeholder="Select order…"
+                hasError={!!errors.orderId}
+                clearable
+              />
               {errors.orderId && <p className="text-xs text-red-600 mt-1">{errors.orderId}</p>}
             </div>
             <div>
@@ -181,10 +188,13 @@ export function TransfersPage() {
             </div>
             <div>
               <label className="block text-sm font-medium mb-1 text-gray-700">Driver (optional)</label>
-              <select className={inputCls} value={form.driverId} onChange={(e) => setForm((f) => ({ ...f, driverId: e.target.value }))}>
-                <option value="">— None —</option>
-                {driverRefs.map((d) => <option key={d.id} value={d.id}>{d.code ? `(${d.code}) ` : ""}{d.name}</option>)}
-              </select>
+              <SearchSelect
+                options={driverRefs.map((d) => ({ value: d.id, label: d.name, sublabel: d.code ?? undefined }))}
+                value={form.driverId ? Number(form.driverId) : null}
+                onChange={(v) => setForm((f) => ({ ...f, driverId: v != null ? String(v) : "" }))}
+                placeholder="— None —"
+                clearable
+              />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1 text-gray-700">Status</label>

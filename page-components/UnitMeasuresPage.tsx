@@ -4,6 +4,8 @@ import { Plus, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { api } from "@/lib/api";
+import { fetchNextCode } from "@/lib/generateCode";
+import { SearchSelect } from "@/components/SearchSelect";
 import { CrudLayout } from "@/components/layout/CrudLayout";
 import { PageTable, TableColumn } from "@/components/layout/PageTable";
 import { PageForm } from "@/components/layout/PageForm";
@@ -51,8 +53,9 @@ export function UnitMeasuresPage() {
 
   useEffect(() => { void load(); }, [load]);
 
-  function openCreate() {
-    setForm({ ...EMPTY_FORM });
+  async function openCreate() {
+    const nextCode = await fetchNextCode("unit-measures", "UM");
+    setForm({ ...EMPTY_FORM, code: nextCode });
     setErrors({});
     setEditing(null);
     setView("form");
@@ -149,12 +152,15 @@ export function UnitMeasuresPage() {
             </div>
             <div>
               <label className="block text-sm font-medium mb-1 text-gray-700">Base Unit (optional)</label>
-              <select className={inputCls} value={form.baseUnitId} onChange={(e) => setForm((f) => ({ ...f, baseUnitId: e.target.value }))}>
-                <option value="">— None (this is a base unit) —</option>
-                {units.filter((u) => !editing || u.id !== editing.id).map((u) => (
-                  <option key={u.id} value={u.id}>{u.code ? `${u.code} - ` : ""}{u.name}</option>
-                ))}
-              </select>
+              <SearchSelect
+                options={units
+                  .filter((u) => !editing || u.id !== editing.id)
+                  .map((u) => ({ value: u.id, label: u.code ? `${u.code} - ${u.name}` : u.name }))}
+                value={form.baseUnitId ? Number(form.baseUnitId) : null}
+                onChange={(v) => setForm((f) => ({ ...f, baseUnitId: v != null ? String(v) : "" }))}
+                placeholder="— None (this is a base unit) —"
+                clearable
+              />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1 text-gray-700">Factor {form.baseUnitId ? <span className="text-red-500">*</span> : null}</label>

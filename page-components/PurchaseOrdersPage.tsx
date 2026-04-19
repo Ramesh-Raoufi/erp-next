@@ -4,6 +4,8 @@ import { Plus, RefreshCw, PlusCircle, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { api } from "@/lib/api";
+import { fetchNextCode } from "@/lib/generateCode";
+import { SearchSelect } from "@/components/SearchSelect";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -100,8 +102,9 @@ export function PurchaseOrdersPage() {
 
   useEffect(() => { void load(); }, [load]);
 
-  function openCreate() {
-    setForm({ ...EMPTY_FORM });
+  async function openCreate() {
+    const nextCode = await fetchNextCode("purchase-orders", "PO");
+    setForm({ ...EMPTY_FORM, code: nextCode });
     setItems([{ ...EMPTY_LINE }]);
     setErrors({});
     setEditOrder(null);
@@ -215,14 +218,14 @@ export function PurchaseOrdersPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1">Vendor <span className="text-red-500">*</span></label>
-              <select
-                className={`w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary ${errors.vendorId ? "border-red-500" : "border-input"}`}
-                value={form.vendorId}
-                onChange={(e) => setForm((f) => ({ ...f, vendorId: e.target.value }))}
-              >
-                <option value="">Select vendor…</option>
-                {vendors.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
-              </select>
+              <SearchSelect
+                options={vendors.map((v) => ({ value: v.id, label: v.name }))}
+                value={form.vendorId ? Number(form.vendorId) : null}
+                onChange={(v) => setForm((f) => ({ ...f, vendorId: v != null ? String(v) : "" }))}
+                placeholder="Select vendor…"
+                hasError={!!errors.vendorId}
+                clearable
+              />
               {errors.vendorId && <p className="text-xs text-red-600 mt-1">{errors.vendorId}</p>}
             </div>
             <div>
@@ -288,14 +291,13 @@ export function PurchaseOrdersPage() {
                 {items.map((item, idx) => (
                   <tr key={idx} className="border-b last:border-0">
                     <td className="py-2 px-2">
-                      <select
-                        className={`w-full rounded border px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-primary ${errors[`item_${idx}_product`] ? "border-red-500" : "border-input"}`}
-                        value={item.productId || ""}
-                        onChange={(e) => updateItem(idx, "productId", Number(e.target.value))}
-                      >
-                        <option value="">Select product…</option>
-                        {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                      </select>
+                      <SearchSelect
+                        options={products.map((p) => ({ value: p.id, label: p.name, sublabel: p.price ? `$${Number(p.price).toFixed(2)}` : undefined }))}
+                        value={item.productId || null}
+                        onChange={(v) => updateItem(idx, "productId", Number(v ?? 0))}
+                        placeholder="Select product…"
+                        hasError={!!errors[`item_${idx}_product`]}
+                      />
                       {errors[`item_${idx}_product`] && <p className="text-xs text-red-600 mt-0.5">{errors[`item_${idx}_product`]}</p>}
                     </td>
                     <td className="py-2 px-2">

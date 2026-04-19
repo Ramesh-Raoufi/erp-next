@@ -4,6 +4,8 @@ import { Plus, RefreshCw, PlusCircle, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { api } from "@/lib/api";
+import { fetchNextCode } from "@/lib/generateCode";
+import { SearchSelect } from "@/components/SearchSelect";
 import { ProductSelector } from "@/components/ProductSelector";
 import { CrudLayout } from "@/components/layout/CrudLayout";
 import { PageTable, TableColumn } from "@/components/layout/PageTable";
@@ -109,8 +111,9 @@ export function BillsPage() {
 
   useEffect(() => { void load(); }, [load]);
 
-  function openCreate() {
-    setForm({ ...EMPTY_FORM });
+  async function openCreate() {
+    const nextCode = await fetchNextCode("bills", "BILL");
+    setForm({ ...EMPTY_FORM, code: nextCode });
     setItems([{ ...EMPTY_LINE }]);
     setErrors({});
     setEditBill(null);
@@ -242,14 +245,14 @@ export function BillsPage() {
               <label className="block text-sm font-medium mb-1 text-gray-700">
                 Vendor <span className="text-red-500">*</span>
               </label>
-              <select
-                className={errors.vendorId ? errInputCls : inputCls}
-                value={form.vendorId}
-                onChange={(e) => setForm((f) => ({ ...f, vendorId: e.target.value }))}
-              >
-                <option value="">Select vendor…</option>
-                {vendors.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
-              </select>
+              <SearchSelect
+                options={vendors.map((v) => ({ value: v.id, label: v.name }))}
+                value={form.vendorId ? Number(form.vendorId) : null}
+                onChange={(v) => setForm((f) => ({ ...f, vendorId: v != null ? String(v) : "" }))}
+                placeholder="Select vendor…"
+                hasError={!!errors.vendorId}
+                clearable
+              />
               {errors.vendorId && <p className="text-xs text-red-600 mt-1">{errors.vendorId}</p>}
             </div>
             <div>

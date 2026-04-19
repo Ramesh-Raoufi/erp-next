@@ -49,13 +49,14 @@ export function PageTable<T extends { id: number }>({
   actions,
 }: PageTableProps<T>) {
   const hasActions = !!(onEdit || onDelete || actions);
-  const totalCols = columns.length + (hasActions ? 1 : 0);
+  const totalCols = columns.length + (hasActions ? 1 : 0) + 1; // +1 for row number
 
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead className="bg-gray-50 sticky top-0 z-10">
           <tr>
+            <th className="px-4 py-3 font-semibold text-gray-600 border-b text-center w-[48px]">#</th>
             {columns.map((col) => (
               <th
                 key={col.key}
@@ -86,8 +87,9 @@ export function PageTable<T extends { id: number }>({
               </td>
             </tr>
           ) : (
-            data.map((row) => (
+            data.map((row, rowIndex) => (
               <tr key={row.id} className="border-t hover:bg-blue-50/30 transition-colors">
+                <td className="px-4 py-3 text-center text-gray-400 text-xs w-[48px]">{rowIndex + 1}</td>
                 {columns.map((col) => (
                   <td
                     key={col.key}

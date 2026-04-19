@@ -4,6 +4,8 @@ import { Plus, RefreshCw, PlusCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { api } from "@/lib/api";
+import { fetchNextCode } from "@/lib/generateCode";
+import { SearchSelect } from "@/components/SearchSelect";
 import { CrudLayout } from "@/components/layout/CrudLayout";
 import { PageTable, TableColumn } from "@/components/layout/PageTable";
 import { PageForm } from "@/components/layout/PageForm";
@@ -96,8 +98,9 @@ export function OrdersPage() {
 
   useEffect(() => { void load(); }, [load]);
 
-  function openCreate() {
-    setForm({ ...EMPTY_FORM });
+  async function openCreate() {
+    const nextCode = await fetchNextCode("orders", "ORD");
+    setForm({ ...EMPTY_FORM, code: nextCode });
     setItems([{ ...EMPTY_ITEM }]);
     setErrors({});
     setEditing(null);
@@ -204,10 +207,14 @@ export function OrdersPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1 text-gray-700">Customer <span className="text-red-500">*</span></label>
-              <select className={errors.customerId ? errInputCls : inputCls} value={form.customerId} onChange={(e) => setForm((f) => ({ ...f, customerId: e.target.value }))}>
-                <option value="">Select customer…</option>
-                {customers.map((c) => <option key={c.id} value={c.id}>{c.code ? `${c.code} - ` : ""}{c.name}{c.lastName ? ` ${c.lastName}` : ""}</option>)}
-              </select>
+              <SearchSelect
+                options={customers.map((c) => ({ value: c.id, label: `${c.name}${c.lastName ? " " + c.lastName : ""}`, sublabel: c.code ?? undefined }))}
+                value={form.customerId ? Number(form.customerId) : null}
+                onChange={(v) => setForm((f) => ({ ...f, customerId: v != null ? String(v) : "" }))}
+                placeholder="Select customer…"
+                hasError={!!errors.customerId}
+                clearable
+              />
               {errors.customerId && <p className="text-xs text-red-600 mt-1">{errors.customerId}</p>}
             </div>
             <div>
@@ -253,10 +260,12 @@ export function OrdersPage() {
               <div key={idx} className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
                 <div className="md:col-span-2">
                   <label className="block text-xs text-gray-500 mb-1">Product</label>
-                  <select className={inputCls} value={item.productId} onChange={(e) => updateItem(idx, { productId: e.target.value })}>
-                    <option value="">Select…</option>
-                    {products.map((p) => <option key={p.id} value={p.id}>{p.code ? `${p.code} - ` : ""}{p.name}</option>)}
-                  </select>
+                  <SearchSelect
+                    options={products.map((p) => ({ value: p.id, label: p.name, sublabel: p.code ?? undefined }))}
+                    value={item.productId ? Number(item.productId) : null}
+                    onChange={(v) => updateItem(idx, { productId: v != null ? String(v) : "" })}
+                    placeholder="Select…"
+                  />
                 </div>
                 <div>
                   <label className="block text-xs text-gray-500 mb-1">Qty</label>
@@ -269,10 +278,13 @@ export function OrdersPage() {
                 <div className="flex gap-2 items-end">
                   <div className="flex-1">
                     <label className="block text-xs text-gray-500 mb-1">Unit</label>
-                    <select className={inputCls} value={item.unitMeasureId} onChange={(e) => updateItem(idx, { unitMeasureId: e.target.value })}>
-                      <option value="">—</option>
-                      {unitMeasures.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
-                    </select>
+                    <SearchSelect
+                      options={unitMeasures.map((u) => ({ value: u.id, label: u.name, sublabel: u.code ?? undefined }))}
+                      value={item.unitMeasureId ? Number(item.unitMeasureId) : null}
+                      onChange={(v) => updateItem(idx, { unitMeasureId: v != null ? String(v) : "" })}
+                      placeholder="—"
+                      clearable
+                    />
                   </div>
                   {items.length > 1 && (
                     <Button variant="outline" size="sm" className="text-red-600 border-red-200 mb-0.5" onClick={() => setItems((p) => p.filter((_, i) => i !== idx))}>✕</Button>

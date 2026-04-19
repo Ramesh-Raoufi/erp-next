@@ -4,6 +4,8 @@ import { Plus, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { api } from "@/lib/api";
+import { fetchNextCode } from "@/lib/generateCode";
+import { SearchSelect } from "@/components/SearchSelect";
 import { CrudLayout } from "@/components/layout/CrudLayout";
 import { PageTable, TableColumn } from "@/components/layout/PageTable";
 import { PageForm } from "@/components/layout/PageForm";
@@ -81,8 +83,9 @@ export function ProductsPage() {
 
   useEffect(() => { void load(); }, [load]);
 
-  function openCreate() {
-    setForm({ ...EMPTY_FORM });
+  async function openCreate() {
+    const nextCode = await fetchNextCode("products", "PRD");
+    setForm({ ...EMPTY_FORM, code: nextCode });
     setErrors({});
     setEditing(null);
     setView("form");
@@ -198,12 +201,13 @@ export function ProductsPage() {
             </div>
             <div>
               <label className="block text-sm font-medium mb-1 text-gray-700">Unit Measure</label>
-              <select className={inputCls} value={form.unitMeasureId} onChange={(e) => setForm((f) => ({ ...f, unitMeasureId: e.target.value }))}>
-                <option value="">— None —</option>
-                {units.map((u) => (
-                  <option key={u.id} value={u.id}>{u.code ? `${u.code} - ` : ""}{u.name}</option>
-                ))}
-              </select>
+              <SearchSelect
+                options={units.map((u) => ({ value: u.id, label: u.code ? `${u.code} - ${u.name}` : u.name }))}
+                value={form.unitMeasureId ? Number(form.unitMeasureId) : null}
+                onChange={(v) => setForm((f) => ({ ...f, unitMeasureId: v != null ? String(v) : "" }))}
+                placeholder="— None —"
+                clearable
+              />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1 text-gray-700">Active</label>
