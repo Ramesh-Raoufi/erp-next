@@ -1,459 +1,338 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
-import { SimpleCrudPage } from "@/components/SimpleCrudPage";
+import { useCallback, useEffect, useState } from "react";
+import { Plus, RefreshCw, PlusCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
 import { api } from "@/lib/api";
-import { useTranslation } from "react-i18next";
+import { CrudLayout } from "@/components/layout/CrudLayout";
+import { PageTable, TableColumn } from "@/components/layout/PageTable";
+import { PageForm } from "@/components/layout/PageForm";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
+type OrderStatus = "pending" | "shipped" | "delivered" | "cancelled";
+
+interface Customer { id: number; name: string; lastName?: string | null; code?: string | null }
+interface Product { id: number; name: string; code?: string | null; price?: string; unitMeasureId?: number | null }
+interface UnitMeasure { id: number; name: string; code?: string | null }
+
+interface OrderItem {
+  productId: string;
+  quantity: string;
+  unitPrice: string;
+  unitMeasureId: string;
+}
+
+interface Order {
+  id: number;
+  code?: string | null;
+  customerId: number;
+  origin: string;
+  destination: string;
+  status: OrderStatus;
+  totalPrice: string;
+  createdAt: string;
+  customer?: { id: number; name: string; lastName?: string | null };
+}
+
+const STATUS_STYLES: Record<OrderStatus, string> = {
+  pending: "bg-yellow-100 text-yellow-700",
+  shipped: "bg-blue-100 text-blue-700",
+  delivered: "bg-green-100 text-green-700",
+  cancelled: "bg-red-100 text-red-700",
+};
+
+function StatusBadge({ status }: { status: OrderStatus }) {
+  return (
+    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize ${STATUS_STYLES[status] ?? "bg-gray-100 text-gray-600"}`}>
+      {status}
+    </span>
+  );
+}
+
+type FormState = { code: string; customerId: string; origin: string; destination: string; status: string };
+const EMPTY_FORM: FormState = { code: "", customerId: "", origin: "", destination: "", status: "pending" };
+const EMPTY_ITEM: OrderItem = { productId: "", quantity: "1", unitPrice: "", unitMeasureId: "" };
+const inputCls = "w-full rounded-md border border-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary";
+const errInputCls = "w-full rounded-md border border-red-500 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary";
+const formatDate = (s: string) => new Date(s).toLocaleDateString();
 
 export function OrdersPage() {
-  const { t } = useTranslation();
-  const { toast } = useToast();
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [unitMeasures, setUnitMeasures] = useState<UnitMeasure[]>([]);
   const [loading, setLoading] = useState(false);
+  const [view, setView] = useState<"list" | "form">("list");
+  const [editing, setEditing] = useState<Order | null>(null);
+  const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  const [items, setItems] = useState<OrderItem[]>([{ ...EMPTY_ITEM }]);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<{ id: number; label: string } | null>(null);
+  const { toast } = useToast();
 
-  const [code, setCode] = useState("");
-  const [customerId, setCustomerId] = useState("");
-  const [origin, setOrigin] = useState("");
-  const [destination, setDestination] = useState("");
-  const [status, setStatus] = useState("pending");
-  const [items, setItems] = useState<
-    Array<{
-      productId: string;
-      quantity: string;
-      unitPrice: string;
-      unitMeasureId: string;
-    }>
-  >([{ productId: "", quantity: "1", unitPrice: "", unitMeasureId: "" }]);
-
-  const [customers, setCustomers] = useState<Record<string, unknown>[]>([]);
-  const [products, setProducts] = useState<Record<string, unknown>[]>([]);
-  const [unitMeasures, setUnitMeasures] = useState<Record<string, unknown>[]>(
-    [],
-  );
-  const statusOptions = useMemo(
-    () => [
-      { label: t("pages.orders.status.pending"), value: "pending" },
-      { label: t("pages.orders.status.shipped"), value: "shipped" },
-      { label: t("pages.orders.status.delivered"), value: "delivered" },
-      { label: t("pages.orders.status.cancelled"), value: "cancelled" },
-    ],
-    [t],
-  );
-
-  useEffect(() => {
-    let active = true;
-    async function load() {
-      const [customersList, productsList, unitMeasuresList] = await Promise.all(
-        [
-          api.list<Record<string, unknown>>("customers"),
-          api.list<Record<string, unknown>>("products"),
-          api.list<Record<string, unknown>>("unit-measures"),
-        ],
-      );
-      if (!active) return;
-      setCustomers(customersList);
-      setProducts(productsList);
-      setUnitMeasures(unitMeasuresList);
-      if (!customerId && customersList[0]?.id != null) {
-        setCustomerId(String(customersList[0].id));
-      }
-    }
-    void load();
-    return () => {
-      active = false;
-    };
-  }, [customerId]);
-
-  const totalPrice = useMemo(() => {
-    return items.reduce((sum, item) => {
-      const qty = Number(item.quantity);
-      const price = Number(item.unitPrice);
-      if (!Number.isFinite(qty) || !Number.isFinite(price)) return sum;
-      return sum + qty * price;
-    }, 0);
-  }, [items]);
-
-  const totalPriceText = useMemo(() => totalPrice.toFixed(2), [totalPrice]);
-
-  function updateItem(
-    index: number,
-    patch: Partial<{
-      productId: string;
-      quantity: string;
-      unitPrice: string;
-      unitMeasureId: string;
-    }>,
-  ) {
-    setItems((prev) =>
-      prev.map((item, i) => (i === index ? { ...item, ...patch } : item)),
-    );
-  }
-
-  function addItem() {
-    setItems((prev) => [
-      ...prev,
-      { productId: "", quantity: "1", unitPrice: "", unitMeasureId: "" },
-    ]);
-  }
-
-  function removeItem(index: number) {
-    setItems((prev) => prev.filter((_, i) => i !== index));
-  }
-
-  async function handleCreate() {
-    const showError = (message: string) => {
-      toast({ variant: "error", message });
-    };
-    const itemPayload = items
-      .map((item) => ({
-        product_id: Number(item.productId),
-        quantity: Number(item.quantity),
-        unit_price: item.unitPrice,
-        unit_measure_id: item.unitMeasureId
-          ? Number(item.unitMeasureId)
-          : undefined,
-      }))
-      .filter(
-        (item) => Number.isFinite(item.product_id) && item.product_id > 0,
-      );
-
-    if (!customerId) {
-      showError("Select a customer.");
-      return;
-    }
-    if (!origin.trim() || !destination.trim()) {
-      showError("Origin and destination are required.");
-      return;
-    }
-    if (itemPayload.length === 0) {
-      showError("Add at least one order item.");
-      return;
-    }
-    if (
-      itemPayload.some((i) => !Number.isFinite(i.quantity) || i.quantity <= 0)
-    ) {
-      showError("Each item must have a quantity > 0.");
-      return;
-    }
-    if (
-      itemPayload.some(
-        (i) =>
-          !Number.isFinite(Number(i.unit_price)) || Number(i.unit_price) <= 0,
-      )
-    ) {
-      showError("Each item must have a unit price > 0.");
-      return;
-    }
-    if (itemPayload.some((i) => !i.unit_measure_id || i.unit_measure_id <= 0)) {
-      showError("Each item must have a unit measure.");
-      return;
-    }
-
+  const load = useCallback(async () => {
     setLoading(true);
     try {
-      await api.create("orders", {
-        code: code.trim() || undefined,
-        customer_id: Number(customerId),
-        origin: origin.trim(),
-        destination: destination.trim(),
-        status,
-        items: itemPayload,
-      });
-      setCode("");
-      setOrigin("");
-      setDestination("");
-      setStatus("pending");
-      setItems([
-        { productId: "", quantity: "1", unitPrice: "", unitMeasureId: "" },
+      const [os, cs, ps, us] = await Promise.all([
+        api.list<Order>("orders"),
+        api.list<Customer>("customers"),
+        api.list<Product>("products"),
+        api.list<UnitMeasure>("unit-measures"),
       ]);
-      setRefreshKey((k) => k + 1);
-      toast({
-        variant: "success",
-        message: t("crud.createSuccess", {
-          defaultValue: "Created successfully",
-        }),
-      });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Create failed";
-      toast({ variant: "error", message });
+      setOrders(os);
+      setCustomers(cs);
+      setProducts(ps);
+      setUnitMeasures(us);
+    } catch {
+      toast({ message: "Failed to load orders", variant: "error" });
     } finally {
       setLoading(false);
     }
+  }, [toast]);
+
+  useEffect(() => { void load(); }, [load]);
+
+  function openCreate() {
+    setForm({ ...EMPTY_FORM });
+    setItems([{ ...EMPTY_ITEM }]);
+    setErrors({});
+    setEditing(null);
+    setView("form");
   }
 
-  return (
-    <SimpleCrudPage
-      title={t("pages.orders.title")}
-      subtitle={t("pages.orders.subtitle")}
-      resource="orders"
-      refreshKey={refreshKey}
-      listTitle={t("crud.listTitle")}
-      renderCreate={
-        <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 space-y-4">
-          <div className="text-sm font-semibold">
-            {t("pages.orders.form.new")}
-          </div>
+  function openEdit(o: Order) {
+    setForm({ code: o.code ?? "", customerId: String(o.customerId), origin: o.origin, destination: o.destination, status: o.status });
+    setItems([{ ...EMPTY_ITEM }]);
+    setErrors({});
+    setEditing(o);
+    setView("form");
+  }
 
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <label className="block space-y-1">
-              <div className="text-xs text-muted-foreground">
-                {t("fields.code")}
-              </div>
-              <Input
-                placeholder="00001"
-                value={code}
-                onChange={(event) => setCode(event.target.value)}
-              />
-            </label>
-            <label className="block space-y-1">
-              <div className="text-xs text-muted-foreground">
-                {t("fields.customer")}
-              </div>
-              <select
-                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                value={customerId}
-                onChange={(event) => setCustomerId(event.target.value)}
-              >
-                <option value="">
-                  {t("pages.orders.form.customerPlaceholder")}
-                </option>
-                {customers.map((customer) => {
-                  const id = customer.id == null ? "" : String(customer.id);
-                  const codeValue = customer.code ? String(customer.code) : "";
-                  const name = customer.name ? String(customer.name) : "";
-                  const lastName = customer.lastName
-                    ? String(customer.lastName)
-                    : "";
-                  return (
-                    <option key={id} value={id}>
-                      {`${codeValue} - ${name} ${lastName}`.trim()}
-                    </option>
-                  );
-                })}
+  function updateItem(idx: number, patch: Partial<OrderItem>) {
+    setItems((prev) => prev.map((item, i) => {
+      if (i !== idx) return item;
+      const updated = { ...item, ...patch };
+      if (patch.productId) {
+        const p = products.find((p) => String(p.id) === patch.productId);
+        if (p) {
+          updated.unitPrice = updated.unitPrice || p.price || "";
+          if (p.unitMeasureId && !updated.unitMeasureId) updated.unitMeasureId = String(p.unitMeasureId);
+        }
+      }
+      return updated;
+    }));
+  }
+
+  const totalPrice = items.reduce((sum, i) => {
+    const qty = Number(i.quantity); const price = Number(i.unitPrice);
+    return sum + (Number.isFinite(qty) && Number.isFinite(price) ? qty * price : 0);
+  }, 0);
+
+  function validate() {
+    const e: Record<string, string> = {};
+    if (!form.customerId) e.customerId = "Customer is required";
+    if (!form.origin.trim()) e.origin = "Origin is required";
+    if (!form.destination.trim()) e.destination = "Destination is required";
+    const validItems = items.filter((i) => i.productId);
+    if (validItems.length === 0) e.items = "Add at least one item";
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  }
+
+  async function handleSave() {
+    if (!validate()) return;
+    setSaving(true);
+    const itemPayload = items
+      .filter((i) => i.productId)
+      .map((i) => ({
+        product_id: Number(i.productId),
+        quantity: Number(i.quantity),
+        unit_price: i.unitPrice,
+        ...(i.unitMeasureId ? { unit_measure_id: Number(i.unitMeasureId) } : {}),
+      }));
+    const body: Record<string, unknown> = {
+      customer_id: Number(form.customerId),
+      origin: form.origin,
+      destination: form.destination,
+      status: form.status,
+      ...(form.code ? { code: form.code } : {}),
+      items: itemPayload,
+    };
+    try {
+      if (editing) {
+        await api.update("orders", editing.id, body);
+        toast({ message: "Order updated", variant: "success" });
+      } else {
+        await api.create("orders", body);
+        toast({ message: "Order created", variant: "success" });
+      }
+      setView("list");
+      void load();
+    } catch {
+      toast({ message: editing ? "Update failed" : "Create failed", variant: "error" });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDelete(id: number) {
+    try {
+      await api.remove("orders", id);
+      toast({ message: "Order deleted", variant: "success" });
+      void load();
+    } catch {
+      toast({ message: "Delete failed", variant: "error" });
+    }
+    setConfirmDelete(null);
+  }
+
+  if (view === "form") {
+    return (
+      <PageForm
+        title={editing ? `Edit Order #${editing.id}` : "New Order"}
+        onBack={() => setView("list")}
+        onSave={() => void handleSave()}
+        onCancel={() => setView("list")}
+        saving={saving}
+      >
+        <div className="rounded-xl border bg-white shadow-sm p-5 space-y-4">
+          <h2 className="font-semibold text-base text-gray-800 border-b pb-2">Order Details</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1 text-gray-700">Customer <span className="text-red-500">*</span></label>
+              <select className={errors.customerId ? errInputCls : inputCls} value={form.customerId} onChange={(e) => setForm((f) => ({ ...f, customerId: e.target.value }))}>
+                <option value="">Select customer…</option>
+                {customers.map((c) => <option key={c.id} value={c.id}>{c.code ? `${c.code} - ` : ""}{c.name}{c.lastName ? ` ${c.lastName}` : ""}</option>)}
               </select>
-            </label>
-            <label className="block space-y-1">
-              <div className="text-xs text-muted-foreground">
-                {t("fields.origin")}
-              </div>
-              <Input
-                value={origin}
-                onChange={(event) => setOrigin(event.target.value)}
-              />
-            </label>
-            <label className="block space-y-1">
-              <div className="text-xs text-muted-foreground">
-                {t("fields.destination")}
-              </div>
-              <Input
-                value={destination}
-                onChange={(event) => setDestination(event.target.value)}
-              />
-            </label>
-            <label className="block space-y-1">
-              <div className="text-xs text-muted-foreground">
-                {t("fields.status")}
-              </div>
-              <select
-                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                value={status}
-                onChange={(event) => setStatus(event.target.value)}
-              >
-                {statusOptions.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
+              {errors.customerId && <p className="text-xs text-red-600 mt-1">{errors.customerId}</p>}
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1 text-gray-700">Code</label>
+              <input type="text" placeholder="ORD-001" className={inputCls} value={form.code} onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1 text-gray-700">Origin <span className="text-red-500">*</span></label>
+              <input type="text" className={errors.origin ? errInputCls : inputCls} value={form.origin} onChange={(e) => setForm((f) => ({ ...f, origin: e.target.value }))} />
+              {errors.origin && <p className="text-xs text-red-600 mt-1">{errors.origin}</p>}
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1 text-gray-700">Destination <span className="text-red-500">*</span></label>
+              <input type="text" className={errors.destination ? errInputCls : inputCls} value={form.destination} onChange={(e) => setForm((f) => ({ ...f, destination: e.target.value }))} />
+              {errors.destination && <p className="text-xs text-red-600 mt-1">{errors.destination}</p>}
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1 text-gray-700">Status</label>
+              <select className={inputCls} value={form.status} onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}>
+                <option value="pending">Pending</option>
+                <option value="shipped">Shipped</option>
+                <option value="delivered">Delivered</option>
+                <option value="cancelled">Cancelled</option>
               </select>
-            </label>
-            <label className="block space-y-1">
-              <div className="text-xs text-muted-foreground">
-                {t("fields.totalPrice")}
-              </div>
-              <Input value={totalPriceText} disabled />
-            </label>
-          </div>
-
-          <div className="rounded-lg border p-3 space-y-3">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div className="text-sm font-semibold">
-                {t("pages.orders.form.itemsTitle")}
-              </div>
-              <Button variant="outline" size="sm" onClick={addItem}>
-                {t("pages.orders.form.addItem")}
-              </Button>
             </div>
-            <div className="space-y-3">
-              {items.map((item, index) => {
-                const lineTotal =
-                  Number(item.quantity) && Number(item.unitPrice)
-                    ? (Number(item.quantity) * Number(item.unitPrice)).toFixed(
-                        2,
-                      )
-                    : "0.00";
-                return (
-                  <div
-                    key={index}
-                    className="grid grid-cols-1 gap-y-3 md:grid-cols-7 md:gap-x-0"
-                  >
-                    <label className="block space-y-1 md:col-span-2">
-                      <div className="text-xs text-muted-foreground">
-                        {t("fields.product", { defaultValue: "Product" })}
-                      </div>
-                      <select
-                        className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                        value={item.productId}
-                        onChange={(event) => {
-                          const nextId = event.target.value;
-                          const product = products.find(
-                            (p) => String(p.id) === nextId,
-                          );
-                          const productUnit = product?.unitMeasureId
-                            ? String(product.unitMeasureId)
-                            : "";
-                          updateItem(index, {
-                            productId: nextId,
-                            ...(productUnit
-                              ? { unitMeasureId: productUnit }
-                              : {}),
-                          });
-                        }}
-                      >
-                        <option value="">{t("common.select")}</option>
-                        {products.map((product) => {
-                          const id = product.id == null ? "" : String(product.id);
-                          const codeValue = product.code
-                            ? String(product.code)
-                            : "";
-                          const name = product.name ? String(product.name) : "";
-                          return (
-                            <option key={id} value={id}>
-                              {`(${codeValue}) ${name}`.trim()}
-                            </option>
-                          );
-                        })}
-                      </select>
-                    </label>
-                    <label className="block space-y-1">
-                      <div className="text-xs text-muted-foreground">
-                        {t("fields.unitMeasure", { defaultValue: "Unit" })}
-                      </div>
-                      <select
-                        className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                        value={item.unitMeasureId}
-                        onChange={(event) =>
-                          updateItem(index, {
-                            unitMeasureId: event.target.value,
-                          })
-                        }
-                      >
-                        <option value="">{t("common.select")}</option>
-                        {unitMeasures.map((unit) => {
-                          const id = unit.id == null ? "" : String(unit.id);
-                          const codeValue = unit.code ? String(unit.code) : "";
-                          const nameValue = unit.name ? String(unit.name) : "";
-                          return (
-                            <option key={id} value={id}>
-                              {`${codeValue ? `${codeValue} - ` : ""}${nameValue}`.trim()}
-                            </option>
-                          );
-                        })}
-                      </select>
-                    </label>
-                    <label className="block space-y-1">
-                      <div className="text-xs text-muted-foreground">
-                        {t("fields.quantity")}
-                      </div>
-                      <Input
-                        type="number"
-                        min={1}
-                        value={item.quantity}
-                        onChange={(event) =>
-                          updateItem(index, { quantity: event.target.value })
-                        }
-                      />
-                    </label>
-                    <label className="block space-y-1">
-                      <div className="text-xs text-muted-foreground">
-                        {t("fields.unitPrice", { defaultValue: "Unit price" })}
-                      </div>
-                      <Input
-                        type="number"
-                        min={0}
-                        step="0.01"
-                        value={item.unitPrice}
-                        onChange={(event) =>
-                          updateItem(index, { unitPrice: event.target.value })
-                        }
-                      />
-                    </label>
-                    <label className="block space-y-1">
-                      <div className="text-xs text-muted-foreground">
-                        {t("fields.lineTotal", { defaultValue: "Line total" })}
-                      </div>
-                      <Input value={lineTotal} disabled />
-                    </label>
-                    <div className="flex items-end md:justify-end">
-                      {items.length > 1 ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => removeItem(index)}
-                        >
-                          {t("pages.orders.form.remove")}
-                        </Button>
-                      ) : null}
-                    </div>
-                  </div>
-                );
-              })}
+            <div>
+              <label className="block text-sm font-medium mb-1 text-gray-700">Total Price</label>
+              <input type="text" disabled className={inputCls + " bg-gray-50"} value={totalPrice.toFixed(2)} />
             </div>
-          </div>
-
-          <div className="flex justify-start">
-            <Button onClick={handleCreate} disabled={loading}>
-              {loading
-                ? t("pages.orders.form.submitting")
-                : t("pages.orders.form.submit")}
-            </Button>
           </div>
         </div>
-      }
-      fields={[
-        { name: "code", label: "Code", type: "text", placeholder: "00001" },
-        {
-          name: "customer_id",
-          label: "Customer",
-          type: "select",
-          valueType: "number",
-          optionsFrom: {
-            resource: "customers",
-            valueField: "id",
-            label: (row) => {
-              const code = row.code ? String(row.code) : "";
-              const name = row.name ? String(row.name) : "";
-              const lastName = row.lastName ? String(row.lastName) : "";
-              return `${code} - ${name} ${lastName}`.trim();
-            },
-          },
-        },
-        { name: "origin", label: "Origin", type: "text" },
-        { name: "destination", label: "Destination", type: "text" },
-        {
-          name: "status",
-          label: "Status",
-          type: "select",
-          options: statusOptions,
-        },
-        {
-          name: "total_price",
-          label: "Total price",
-          type: "money",
-          hideInEdit: true,
-        },
-      ]}
-    />
+
+        <div className="rounded-xl border bg-white shadow-sm p-5 space-y-4">
+          <div className="flex items-center justify-between border-b pb-2">
+            <h2 className="font-semibold text-base text-gray-800">Order Items</h2>
+            <Button variant="outline" size="sm" onClick={() => setItems((p) => [...p, { ...EMPTY_ITEM }])}>
+              <PlusCircle className="h-4 w-4 mr-1" /> Add Item
+            </Button>
+          </div>
+          {errors.items && <p className="text-xs text-red-600">{errors.items}</p>}
+          <div className="space-y-3">
+            {items.map((item, idx) => (
+              <div key={idx} className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
+                <div className="md:col-span-2">
+                  <label className="block text-xs text-gray-500 mb-1">Product</label>
+                  <select className={inputCls} value={item.productId} onChange={(e) => updateItem(idx, { productId: e.target.value })}>
+                    <option value="">Select…</option>
+                    {products.map((p) => <option key={p.id} value={p.id}>{p.code ? `${p.code} - ` : ""}{p.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Qty</label>
+                  <input type="number" min={1} className={inputCls} value={item.quantity} onChange={(e) => updateItem(idx, { quantity: e.target.value })} />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Unit Price</label>
+                  <input type="number" min={0} step="0.01" className={inputCls} value={item.unitPrice} onChange={(e) => updateItem(idx, { unitPrice: e.target.value })} />
+                </div>
+                <div className="flex gap-2 items-end">
+                  <div className="flex-1">
+                    <label className="block text-xs text-gray-500 mb-1">Unit</label>
+                    <select className={inputCls} value={item.unitMeasureId} onChange={(e) => updateItem(idx, { unitMeasureId: e.target.value })}>
+                      <option value="">—</option>
+                      {unitMeasures.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+                    </select>
+                  </div>
+                  {items.length > 1 && (
+                    <Button variant="outline" size="sm" className="text-red-600 border-red-200 mb-0.5" onClick={() => setItems((p) => p.filter((_, i) => i !== idx))}>✕</Button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </PageForm>
+    );
+  }
+
+  const columns: TableColumn<Order>[] = [
+    { key: "code", label: "Code", render: (r) => r.code ?? "—" },
+    { key: "customer", label: "Customer", render: (r) => r.customer ? `${r.customer.name}${r.customer.lastName ? " " + r.customer.lastName : ""}` : String(r.customerId) },
+    { key: "origin", label: "Origin" },
+    { key: "destination", label: "Destination" },
+    { key: "status", label: "Status", render: (r) => <StatusBadge status={r.status} /> },
+    { key: "totalPrice", label: "Total", align: "right", render: (r) => `$${Number(r.totalPrice).toFixed(2)}` },
+    { key: "createdAt", label: "Created", render: (r) => formatDate(r.createdAt) },
+  ];
+
+  return (
+    <>
+      <CrudLayout
+        title="Orders"
+        subtitle={`${orders.length} order${orders.length !== 1 ? "s" : ""}`}
+        actions={
+          <>
+            <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
+              <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            </Button>
+            <Button size="sm" onClick={openCreate}><Plus className="mr-1 h-4 w-4" /> New Order</Button>
+          </>
+        }
+      >
+        <PageTable
+          columns={columns}
+          data={orders}
+          loading={loading}
+          emptyMessage="No orders yet."
+          emptyAction={<Button size="sm" onClick={openCreate}><Plus className="mr-1 h-4 w-4" /> New Order</Button>}
+          onEdit={openEdit}
+          onDelete={(o) => setConfirmDelete({ id: o.id, label: o.code ? `Order ${o.code}` : `Order #${o.id}` })}
+        />
+      </CrudLayout>
+
+      <AlertDialog open={!!confirmDelete} onOpenChange={(o) => !o && setConfirmDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {confirmDelete?.label}?</AlertDialogTitle>
+            <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => confirmDelete && void handleDelete(confirmDelete.id)}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

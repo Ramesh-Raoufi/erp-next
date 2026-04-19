@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
-import { Plus, Pencil, Trash2, RefreshCw, ArrowLeft, PlusCircle, X } from "lucide-react";
+import { Plus, RefreshCw, PlusCircle, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { api } from "@/lib/api";
@@ -8,6 +8,9 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { CrudLayout } from "@/components/layout/CrudLayout";
+import { PageTable, TableColumn } from "@/components/layout/PageTable";
+import { PageForm } from "@/components/layout/PageForm";
 
 type POStatus = "draft" | "sent" | "received" | "cancelled";
 
@@ -62,20 +65,6 @@ function StatusBadge({ status }: { status: POStatus }) {
 const EMPTY_LINE: POItem = { productId: 0, quantity: 1, unitPrice: 0, totalPrice: 0 };
 type FormState = { code: string; vendorId: string; status: string; notes: string; expectedAt: string; };
 const EMPTY_FORM: FormState = { code: "", vendorId: "", status: "draft", notes: "", expectedAt: "" };
-
-function SkeletonRows() {
-  return (
-    <>
-      {[1, 2, 3].map((i) => (
-        <tr key={i} className="border-t animate-pulse">
-          {[1, 2, 3, 4, 5, 6].map((j) => (
-            <td key={j} className="px-4 py-3"><div className="h-4 bg-muted rounded w-full" /></td>
-          ))}
-        </tr>
-      ))}
-    </>
-  );
-}
 
 export function PurchaseOrdersPage() {
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
@@ -211,20 +200,18 @@ export function PurchaseOrdersPage() {
   // ──────────────────────────────────────────────────────────────
   if (view === "form") {
     return (
-      <div className="max-w-4xl mx-auto p-4 md:p-6 space-y-6">
-        <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm" onClick={() => setView("list")}>
-            <ArrowLeft className="h-4 w-4 mr-1" /> Back
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold">{editOrder ? `Edit PO #${editOrder.id}` : "New Purchase Order"}</h1>
-            <p className="text-sm text-muted-foreground">{editOrder ? "Update purchase order" : "Create a new vendor purchase order"}</p>
-          </div>
-        </div>
+      <PageForm
+        title={editOrder ? `Edit PO #${editOrder.id}` : "New Purchase Order"}
+        onBack={() => setView("list")}
+        onSave={() => void handleSubmit()}
+        onCancel={() => setView("list")}
+        saving={saving}
+        saveLabel={editOrder ? "Save Changes" : "Create Purchase Order"}
+      >
 
         {/* Vendor Info */}
-        <div className="rounded-lg border p-5 space-y-4">
-          <h2 className="font-semibold text-base border-b pb-2">Order Info</h2>
+        <div className="rounded-xl border bg-white shadow-sm p-5 space-y-4">
+          <h2 className="font-semibold text-base text-gray-800 border-b pb-2">Order Info</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1">Vendor <span className="text-red-500">*</span></label>
@@ -279,7 +266,7 @@ export function PurchaseOrdersPage() {
         </div>
 
         {/* Line Items */}
-        <div className="rounded-lg border p-5 space-y-4">
+        <div className="rounded-xl border bg-white shadow-sm p-5 space-y-4">
           <div className="flex items-center justify-between border-b pb-2">
             <h2 className="font-semibold text-base">Line Items</h2>
             <Button variant="outline" size="sm" onClick={addItem}>
@@ -348,101 +335,46 @@ export function PurchaseOrdersPage() {
             </div>
           </div>
         </div>
-
-        <div className="flex justify-end gap-3 pb-6">
-          <Button variant="outline" onClick={() => setView("list")} disabled={saving}>Cancel</Button>
-          <Button onClick={() => void handleSubmit()} disabled={saving}>
-            {saving ? "Saving…" : (editOrder ? "Save Changes" : "Create Purchase Order")}
-          </Button>
-        </div>
-      </div>
+      </PageForm>
     );
   }
 
   // ──────────────────────────────────────────────────────────────
   // LIST VIEW
   // ──────────────────────────────────────────────────────────────
-  return (
-    <div className="space-y-4 p-4 md:p-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Purchase Orders</h1>
-          <p className="text-sm text-muted-foreground">
-            Showing {orders.length} order{orders.length !== 1 ? "s" : ""}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
-            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-          </Button>
-          <Button size="sm" onClick={openCreate}>
-            <Plus className="mr-1 h-4 w-4" /> New PO
-          </Button>
-        </div>
-      </div>
+  const columns: TableColumn<PurchaseOrder>[] = [
+    { key: "code", label: "Code", render: (r) => r.code ?? "—" },
+    { key: "vendor", label: "Vendor", render: (r) => r.vendor?.name ?? String(r.vendorId) },
+    { key: "status", label: "Status", render: (r) => <StatusBadge status={r.status} /> },
+    { key: "totalAmount", label: "Total Amount", align: "right", render: (r) => `$${Number(r.totalAmount).toFixed(2)}` },
+    { key: "expectedAt", label: "Expected", render: (r) => r.expectedAt ? new Date(r.expectedAt).toLocaleDateString() : "—" },
+    { key: "createdAt", label: "Created", render: (r) => new Date(r.createdAt).toLocaleDateString() },
+  ];
 
-      <div className="overflow-auto rounded-lg border">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/50">
-            <tr>
-              <th className="px-4 py-3 text-left font-medium">#</th>
-              <th className="px-4 py-3 text-left font-medium">Code</th>
-              <th className="px-4 py-3 text-left font-medium">Vendor</th>
-              <th className="px-4 py-3 text-right font-medium">Total Amount</th>
-              <th className="px-4 py-3 text-left font-medium">Expected</th>
-              <th className="px-4 py-3 text-left font-medium">Status</th>
-              <th className="px-4 py-3 text-left font-medium">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <SkeletonRows />
-            ) : orders.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="px-4 py-16 text-center">
-                  <div className="flex flex-col items-center gap-3 text-muted-foreground">
-                    <svg className="h-12 w-12 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                        d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-                    </svg>
-                    <p className="font-medium">No purchase orders yet</p>
-                    <p className="text-sm">Create your first purchase order.</p>
-                    <Button size="sm" onClick={openCreate}><Plus className="mr-1 h-4 w-4" /> New PO</Button>
-                  </div>
-                </td>
-              </tr>
-            ) : (
-              orders.map((po) => (
-                <tr key={po.id} className="border-t hover:bg-muted/30 transition-colors">
-                  <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{po.id}</td>
-                  <td className="px-4 py-3">{po.code ?? "—"}</td>
-                  <td className="px-4 py-3">{po.vendor?.name ?? po.vendorId}</td>
-                  <td className="px-4 py-3 text-right font-semibold">{Number(po.totalAmount).toFixed(2)}</td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {po.expectedAt ? new Date(po.expectedAt).toLocaleDateString() : "—"}
-                  </td>
-                  <td className="px-4 py-3"><StatusBadge status={po.status} /></td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-1">
-                      <Button variant="outline" size="sm" onClick={() => openEdit(po)} title="Edit">
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline" size="sm"
-                        className="text-red-600 hover:text-red-700 border-red-200"
-                        onClick={() => setConfirmDelete({ id: po.id, label: po.code ? `PO ${po.code}` : `PO #${po.id}` })}
-                        title="Delete"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+  return (
+    <>
+      <CrudLayout
+        title="Purchase Orders"
+        subtitle={`${orders.length} order${orders.length !== 1 ? "s" : ""}`}
+        actions={
+          <>
+            <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
+              <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            </Button>
+            <Button size="sm" onClick={openCreate}><Plus className="mr-1 h-4 w-4" /> New PO</Button>
+          </>
+        }
+      >
+        <PageTable
+          columns={columns}
+          data={orders}
+          loading={loading}
+          emptyMessage="No purchase orders yet."
+          emptyAction={<Button size="sm" onClick={openCreate}><Plus className="mr-1 h-4 w-4" /> New PO</Button>}
+          onEdit={openEdit}
+          onDelete={(po) => setConfirmDelete({ id: po.id, label: po.code ? `PO ${po.code}` : `PO #${po.id}` })}
+        />
+      </CrudLayout>
 
       <AlertDialog open={!!confirmDelete} onOpenChange={(o) => !o && setConfirmDelete(null)}>
         <AlertDialogContent>
@@ -456,6 +388,6 @@ export function PurchaseOrdersPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </>
   );
 }
