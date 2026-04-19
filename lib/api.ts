@@ -108,8 +108,12 @@ export const api = {
     }
   },
 
-  list<T>(resource: CrudResource) {
-    return apiFetch<T[]>(`/api/${resource}`);
+  async list<T>(resource: CrudResource) {
+    const result = await apiFetch<T[] | { data: T[] } | { items: T[] }>(`/api/${resource}`);
+    if (Array.isArray(result)) return result;
+    if (result && typeof result === 'object' && 'data' in result) return (result as { data: T[] }).data;
+    if (result && typeof result === 'object' && 'items' in result) return (result as { items: T[] }).items;
+    return [] as T[];
   },
 
   get<T>(resource: CrudResource, id: number) {

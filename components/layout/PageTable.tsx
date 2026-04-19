@@ -87,7 +87,7 @@ export function PageTable<T extends { id: number }>({
               </td>
             </tr>
           ) : (
-            data.map((row, rowIndex) => (
+            (Array.isArray(data) ? data : []).map((row, rowIndex) => (
               <tr key={row.id} className="border-t hover:bg-blue-50/30 transition-colors">
                 <td className="px-4 py-3 text-center text-gray-400 text-xs w-[48px]">{rowIndex + 1}</td>
                 {columns.map((col) => (
