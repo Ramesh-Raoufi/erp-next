@@ -1,0 +1,324 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  admin
+  operator
+  accountant
+  driver
+}
+
+enum OrderStatus {
+  pending
+  shipped
+  delivered
+  cancelled
+}
+
+enum TransferStatus {
+  assigned
+  in_transit
+  completed
+}
+
+enum PaymentMethod {
+  cash
+  card
+  bank
+}
+
+enum PaymentStatus {
+  paid
+  partial
+  unpaid
+}
+
+enum ExpenseType {
+  shipment
+  general
+}
+
+enum ExpenseCategory {
+  fuel
+  rent
+  salary
+  maintenance
+  office
+}
+
+enum AccountTypeCategory {
+  asset
+  liability
+  income
+  expense
+  equity
+}
+
+enum AdjustmentRelatedType {
+  order
+  payment
+  expense
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  code      String?  @unique
+  name      String
+  lastName  String?  @map("last_name")
+  email     String?  @unique
+  username  String?  @unique
+  role      UserRole
+  phone     String?
+  passwordHash String? @map("password_hash")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  @@map("users")
+}
+
+model Customer {
+  id        Int      @id @default(autoincrement())
+  code      String?  @unique
+  name      String
+  lastName  String?  @map("last_name")
+  email     String?  @unique
+  phone     String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  orders    Order[]
+
+  @@map("customers")
+}
+
+model Product {
+  id          Int      @id @default(autoincrement())
+  code        String?  @unique
+  name        String
+  weight      Float?
+  quantity    Int
+  unitMeasureId Int?   @map("unit_measure_id")
+  description String?
+  price       Decimal  @default(0)
+  compareAtPrice Decimal? @map("compare_at_price")
+  imageUrl    String?  @map("image_url")
+  category    String?
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+
+  unitMeasure UnitMeasure? @relation(fields: [unitMeasureId], references: [id])
+  orderItems  OrderItem[]
+
+  @@index([unitMeasureId])
+  @@map("products")
+}
+
+model AccountType {
+  id          Int      @id @default(autoincrement())
+  code        String?  @unique
+  name        String
+  type        AccountTypeCategory
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+
+  accounts    Account[]
+
+  @@map("account_types")
+}
+
+model Account {
+  id             Int      @id @default(autoincrement())
+  code           String?  @unique
+  name           String
+  accountTypeId  Int      @map("type_id")
+  balance        Decimal  @default(0)
+  description    String?
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  deletedAt      DateTime? @map("deleted_at")
+
+  accountType    AccountType @relation(fields: [accountTypeId], references: [id])
+
+  @@index([accountTypeId])
+  @@map("accounts")
+}
+
+model Order {
+  id          Int         @id @default(autoincrement())
+  code        String?     @unique
+  customerId  Int         @map("customer_id")
+  origin      String
+  destination String
+  status      OrderStatus @default(pending)
+  totalPrice  Decimal     @map("total_price")
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+  deletedAt   DateTime?   @map("deleted_at")
+
+  customer    Customer    @relation(fields: [customerId], references: [id])
+  items       OrderItem[]
+  transfers   Transfer[]
+  payments    Payment[]
+
+  @@index([customerId])
+  @@map("orders")
+}
+
+model Driver {
+  id            Int      @id @default(autoincrement())
+  code          String?  @unique
+  name          String
+  phone         String?
+  licenseNumber String   @map("license_number")
+  vehicleType   String   @map("vehicle_type")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  deletedAt     DateTime? @map("deleted_at")
+
+  transfers     Transfer[]
+
+  @@map("drivers")
+}
+
+model Transfer {
+  id          Int            @id @default(autoincrement())
+  code        String?        @unique
+  orderId     Int            @map("order_id")
+  driverId    Int?           @map("driver_id")
+  vehicleInfo String?        @map("vehicle_info")
+  status      TransferStatus @default(assigned)
+  shippedAt   DateTime?      @map("shipped_at")
+  deliveredAt DateTime?      @map("delivered_at")
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
+  deletedAt   DateTime?      @map("deleted_at")
+
+  order       Order          @relation(fields: [orderId], references: [id])
+  driver      Driver?        @relation(fields: [driverId], references: [id])
+  tracking    Tracking[]
+  expenses    Expense[]
+
+  @@index([orderId])
+  @@index([driverId])
+  @@map("transfers")
+}
+
+model Payment {
+  id        Int          @id @default(autoincrement())
+  code      String?      @unique
+  orderId   Int          @map("order_id")
+  amount    Decimal
+  method    PaymentMethod
+  status    PaymentStatus
+  paidAt    DateTime?    @map("paid_at")
+  createdAt DateTime     @default(now()) @map("created_at")
+  updatedAt DateTime     @updatedAt @map("updated_at")
+  deletedAt DateTime?    @map("deleted_at")
+
+  order     Order        @relation(fields: [orderId], references: [id])
+
+  @@index([orderId])
+  @@map("payments")
+}
+
+model Expense {
+  id          Int           @id @default(autoincrement())
+  code        String?       @unique
+  type        ExpenseType
+  transferId  Int?          @map("reference_id")
+  amount      Decimal
+  category    ExpenseCategory
+  description String?
+  paidAt      DateTime?     @map("paid_at")
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+  deletedAt   DateTime?     @map("deleted_at")
+
+  transfer    Transfer?     @relation(fields: [transferId], references: [id])
+
+  @@index([transferId])
+  @@map("expenses")
+}
+
+model Adjustment {
+  id          Int                 @id @default(autoincrement())
+  code        String?             @unique
+  relatedType AdjustmentRelatedType @map("related_type")
+  relatedId   Int                 @map("related_id")
+  amount      Decimal
+  reason      String
+  createdAt   DateTime            @default(now()) @map("created_at")
+  updatedAt   DateTime            @updatedAt @map("updated_at")
+  deletedAt   DateTime?           @map("deleted_at")
+
+  @@index([relatedType, relatedId])
+  @@map("adjustments")
+}
+
+model Tracking {
+  id         Int      @id @default(autoincrement())
+  code       String?  @unique
+  transferId Int      @map("transfer_id")
+  status     String
+  location   String?
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at")
+  deletedAt  DateTime? @map("deleted_at")
+
+  transfer   Transfer @relation(fields: [transferId], references: [id])
+
+  @@index([transferId])
+  @@map("tracking")
+}
+
+model UnitMeasure {
+  id         Int      @id @default(autoincrement())
+  code       String?  @unique
+  name       String
+  symbol     String?
+  baseUnitId Int?     @map("base_unit_id")
+  factor     Decimal? @map("factor")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+  deletedAt  DateTime? @map("deleted_at")
+
+  baseUnit    UnitMeasure?  @relation("UnitMeasureBase", fields: [baseUnitId], references: [id])
+  relatedUnits UnitMeasure[] @relation("UnitMeasureBase")
+  products    Product[]
+  orderItems  OrderItem[]
+
+  @@index([baseUnitId])
+  @@map("unit_measures")
+}
+
+model OrderItem {
+  id         Int      @id @default(autoincrement())
+  orderId    Int      @map("order_id")
+  productId  Int      @map("product_id")
+  quantity   Int
+  unitPrice  Decimal  @map("unit_price")
+  totalPrice Decimal  @map("total_price")
+  unitMeasureId Int?  @map("unit_measure_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  order      Order    @relation(fields: [orderId], references: [id])
+  product    Product  @relation(fields: [productId], references: [id])
+  unitMeasure UnitMeasure? @relation(fields: [unitMeasureId], references: [id])
+
+  @@index([orderId])
+  @@index([productId])
+  @@index([unitMeasureId])
+  @@map("order_items")
+}
