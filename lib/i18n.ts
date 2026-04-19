@@ -34,6 +34,11 @@ const resources = {
         tracking: "Tracking",
         reports: "Reports",
         settings: "Settings",
+        vendors: "Vendors",
+        bills: "Bills",
+        invoices: "Invoices",
+        purchaseOrders: "Purchase Orders",
+        customerPayments: "Customer Payments",
       },
       settings: {
         title: "Settings",
@@ -314,6 +319,11 @@ const resources = {
         tracking: "رهگیری",
         reports: "گزارش‌ها",
         settings: "تنظیمات",
+        vendors: "تأمین‌کنندگان",
+        bills: "صورت‌حساب‌ها",
+        invoices: "فاکتورها",
+        purchaseOrders: "سفارشات خرید",
+        customerPayments: "پرداخت‌های مشتریان",
       },
       settings: {
         title: "تنظیمات",

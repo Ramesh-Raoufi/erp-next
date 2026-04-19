@@ -31,7 +31,12 @@ export type CrudResource =
   | "tracking"
   | "account-types"
   | "accounts"
-  | "unit-measures";
+  | "unit-measures"
+  | "vendors"
+  | "bills"
+  | "invoices"
+  | "purchase-orders"
+  | "customer-payments";
 
 export type PublicTrackingResponse = {
   transferId: number;

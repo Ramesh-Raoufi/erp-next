@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = env("DATABASE_PROVIDER")
   url      = env("DATABASE_URL")
 }
 
@@ -94,7 +94,9 @@ model Customer {
   updatedAt DateTime @updatedAt @map("updated_at")
   deletedAt DateTime? @map("deleted_at")
 
-  orders    Order[]
+  orders           Order[]
+  invoices         Invoice[]
+  customerPayments CustomerPayment[]
 
   @@map("customers")
 }
@@ -116,8 +118,9 @@ model Product {
   updatedAt   DateTime @updatedAt @map("updated_at")
   deletedAt   DateTime? @map("deleted_at")
 
-  unitMeasure UnitMeasure? @relation(fields: [unitMeasureId], references: [id])
-  orderItems  OrderItem[]
+  unitMeasure        UnitMeasure? @relation(fields: [unitMeasureId], references: [id])
+  orderItems         OrderItem[]
+  purchaseOrderItems PurchaseOrderItem[]
 
   @@index([unitMeasureId])
   @@map("products")
@@ -171,6 +174,7 @@ model Order {
   items       OrderItem[]
   transfers   Transfer[]
   payments    Payment[]
+  invoices    Invoice[]
 
   @@index([customerId])
   @@map("orders")
@@ -300,6 +304,150 @@ model UnitMeasure {
 
   @@index([baseUnitId])
   @@map("unit_measures")
+}
+
+enum BillStatus {
+  draft
+  pending
+  paid
+  overdue
+}
+
+enum InvoiceStatus {
+  draft
+  sent
+  paid
+  overdue
+  cancelled
+}
+
+enum PurchaseOrderStatus {
+  draft
+  sent
+  received
+  cancelled
+}
+
+enum CustomerPaymentStatus {
+  pending
+  completed
+  refunded
+  failed
+}
+
+model Vendor {
+  id        Int       @id @default(autoincrement())
+  code      String?   @unique
+  name      String
+  email     String?   @unique
+  phone     String?
+  address   String?
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  bills          Bill[]
+  purchaseOrders PurchaseOrder[]
+
+  @@map("vendors")
+}
+
+model Bill {
+  id          Int        @id @default(autoincrement())
+  code        String?    @unique
+  vendorId    Int        @map("vendor_id")
+  amount      Decimal
+  dueDate     DateTime?  @map("due_date")
+  status      BillStatus @default(draft)
+  description String?
+  paidAt      DateTime?  @map("paid_at")
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+  deletedAt   DateTime?  @map("deleted_at")
+
+  vendor Vendor @relation(fields: [vendorId], references: [id])
+
+  @@index([vendorId])
+  @@map("bills")
+}
+
+model Invoice {
+  id         Int           @id @default(autoincrement())
+  code       String?       @unique
+  customerId Int           @map("customer_id")
+  orderId    Int?          @map("order_id")
+  amount     Decimal
+  dueDate    DateTime?     @map("due_date")
+  status     InvoiceStatus @default(draft)
+  notes      String?
+  paidAt     DateTime?     @map("paid_at")
+  createdAt  DateTime      @default(now()) @map("created_at")
+  updatedAt  DateTime      @updatedAt @map("updated_at")
+  deletedAt  DateTime?     @map("deleted_at")
+
+  customer Customer @relation(fields: [customerId], references: [id])
+  order    Order?   @relation(fields: [orderId], references: [id])
+
+  @@index([customerId])
+  @@index([orderId])
+  @@map("invoices")
+}
+
+model PurchaseOrder {
+  id          Int                 @id @default(autoincrement())
+  code        String?             @unique
+  vendorId    Int                 @map("vendor_id")
+  status      PurchaseOrderStatus @default(draft)
+  totalAmount Decimal             @default(0) @map("total_amount")
+  notes       String?
+  expectedAt  DateTime?           @map("expected_at")
+  createdAt   DateTime            @default(now()) @map("created_at")
+  updatedAt   DateTime            @updatedAt @map("updated_at")
+  deletedAt   DateTime?           @map("deleted_at")
+
+  vendor Vendor              @relation(fields: [vendorId], references: [id])
+  items  PurchaseOrderItem[]
+
+  @@index([vendorId])
+  @@map("purchase_orders")
+}
+
+model PurchaseOrderItem {
+  id              Int      @id @default(autoincrement())
+  purchaseOrderId Int      @map("purchase_order_id")
+  productId       Int      @map("product_id")
+  quantity        Int
+  unitPrice       Decimal  @map("unit_price")
+  totalPrice      Decimal  @map("total_price")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+  product       Product       @relation(fields: [productId], references: [id])
+
+  @@index([purchaseOrderId])
+  @@index([productId])
+  @@map("purchase_order_items")
+}
+
+model CustomerPayment {
+  id         Int                   @id @default(autoincrement())
+  code       String?               @unique
+  customerId Int                   @map("customer_id")
+  invoiceId  Int?                  @map("invoice_id")
+  amount     Decimal
+  method     PaymentMethod
+  status     CustomerPaymentStatus @default(pending)
+  paidAt     DateTime?             @map("paid_at")
+  notes      String?
+  createdAt  DateTime              @default(now()) @map("created_at")
+  updatedAt  DateTime              @updatedAt @map("updated_at")
+  deletedAt  DateTime?             @map("deleted_at")
+
+  customer Customer @relation(fields: [customerId], references: [id])
+
+  @@index([customerId])
+  @@map("customer_payments")
 }
 
 model OrderItem {

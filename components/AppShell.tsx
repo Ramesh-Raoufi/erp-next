@@ -87,6 +87,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       roles: ["admin", "accountant"],
     },
     { label: t("nav.settings"), to: "/app/settings" },
+    { label: t("nav.vendors"), to: "/app/vendors", roles: ["admin", "accountant"] },
+    { label: t("nav.bills"), to: "/app/bills", roles: ["admin", "accountant"] },
+    { label: t("nav.invoices"), to: "/app/invoices", roles: ["admin", "accountant", "operator"] },
+    { label: t("nav.purchaseOrders"), to: "/app/purchase-orders", roles: ["admin", "accountant", "operator"] },
+    { label: t("nav.customerPayments"), to: "/app/customer-payments", roles: ["admin", "accountant"] },
   ];
   const role = user?.role;
   const visibleNavItems = navItems.filter(
