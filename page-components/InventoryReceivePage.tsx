@@ -25,7 +25,7 @@ export function InventoryReceivePage() {
   const load = useCallback(async () => {
     const res = await fetch("/api/inventory", { headers: { "x-user-id": "1" } });
     const data = await res.json();
-    setProducts(data);
+    setProducts(Array.isArray(data) ? data : data.items ?? data.data ?? []);
   }, []);
 
   useEffect(() => { void load(); }, [load]);

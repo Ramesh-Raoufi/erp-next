@@ -38,7 +38,7 @@ export function InventoryPage() {
     try {
       const res = await fetch("/api/inventory", { headers: { "x-user-id": "1" } });
       const data = await res.json();
-      setProducts(data);
+      setProducts(Array.isArray(data) ? data : data.items ?? data.data ?? []);
     } catch {
       toast({ message: "Failed to load inventory", variant: "error" });
     } finally {
