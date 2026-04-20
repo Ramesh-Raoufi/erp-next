@@ -24,9 +24,30 @@ export async function POST(req: NextRequest) {
   try {
     getAuthUserId(req);
     const body = await req.json();
-    if (body.vendorId) body.vendorId = Number(body.vendorId);
-    if (body.expectedAt) body.expectedAt = new Date(body.expectedAt);
-    const row = await prismaAny.purchaseOrder.create({ data: body });
+    const { items = [], totalAmount, ...poData } = body;
+    if (poData.vendorId) poData.vendorId = Number(poData.vendorId);
+    if (poData.expectedAt) poData.expectedAt = new Date(poData.expectedAt);
+
+    const parsedItems = (items as any[]).map((item: any) => ({
+      productId: Number(item.productId),
+      quantity: Number(item.quantity) || 1,
+      unitPrice: Number(item.unitPrice) || 0,
+      totalPrice: (Number(item.quantity) || 1) * (Number(item.unitPrice) || 0),
+    }));
+
+    const calcTotal = parsedItems.reduce((s: number, i: any) => s + i.totalPrice, 0);
+
+    const row = await prismaAny.purchaseOrder.create({
+      data: {
+        ...poData,
+        totalAmount: totalAmount ?? calcTotal,
+        items: parsedItems.length > 0 ? { create: parsedItems } : undefined,
+      },
+      include: {
+        vendor: { select: { id: true, name: true } },
+        items: { include: { product: { select: { id: true, name: true } } } },
+      },
+    });
     return NextResponse.json(row, { status: 201 });
   } catch (e) { return handleError(e); }
 }

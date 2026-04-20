@@ -83,6 +83,21 @@ export function InventoryExitPage() {
             placeholder="Select product…"
             hasError={!!errors.productId}
             clearable
+            quickCreate={{
+              label: "Add New Product",
+              fields: [
+                { key: "name", label: "Name", required: true },
+                { key: "price", label: "Price", required: true },
+                { key: "quantity", label: "Initial Quantity", required: true },
+                { key: "category", label: "Category" },
+              ],
+              onSave: async (data) => {
+                const res = await fetch("/api/products", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: data.name, price: data.price, quantity: data.quantity, category: data.category || undefined }) });
+                const created = await res.json();
+                setProducts((prev) => [...prev, created]);
+                return { id: created.id, name: created.name };
+              },
+            }}
           />
           {errors.productId && <p className="text-xs text-red-600 mt-1">{errors.productId}</p>}
           {selected && (

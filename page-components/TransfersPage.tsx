@@ -194,6 +194,21 @@ export function TransfersPage() {
                 onChange={(v) => setForm((f) => ({ ...f, driverId: v != null ? String(v) : "" }))}
                 placeholder="— None —"
                 clearable
+                quickCreate={{
+                  label: "Add New Driver",
+                  fields: [
+                    { key: "name", label: "Name", required: true },
+                    { key: "phone", label: "Phone", type: "tel", required: true },
+                    { key: "licenseNumber", label: "License Number", required: true },
+                    { key: "vehicleType", label: "Vehicle Type", required: true },
+                  ],
+                  onSave: async (data) => {
+                    const res = await fetch("/api/drivers", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
+                    const created = await res.json();
+                    setDriverRefs((prev) => [...prev, created]);
+                    return { id: created.id, name: created.name };
+                  },
+                }}
               />
             </div>
             <div>

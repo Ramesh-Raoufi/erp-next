@@ -154,6 +154,19 @@ export function AccountsPage() {
                 onChange={(v) => setForm((f) => ({ ...f, accountTypeId: v != null ? String(v) : "" }))}
                 placeholder="— None —"
                 clearable
+                quickCreate={{
+                  label: "Add New Account Type",
+                  fields: [
+                    { key: "name", label: "Name", required: true },
+                    { key: "code", label: "Code" },
+                  ],
+                  onSave: async (data) => {
+                    const res = await fetch("/api/account-types", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
+                    const created = await res.json();
+                    setAccountTypes((prev) => [...prev, created]);
+                    return { id: created.id, name: created.code ? `${created.code} ${created.name}` : created.name };
+                  },
+                }}
               />
             </div>
             <div>

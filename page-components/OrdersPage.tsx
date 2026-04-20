@@ -214,6 +214,21 @@ export function OrdersPage() {
                 placeholder="Select customer…"
                 hasError={!!errors.customerId}
                 clearable
+                quickCreate={{
+                  label: "Add New Customer",
+                  fields: [
+                    { key: "name", label: "First Name", required: true },
+                    { key: "lastName", label: "Last Name" },
+                    { key: "email", label: "Email", type: "email" },
+                    { key: "phone", label: "Phone", type: "tel" },
+                  ],
+                  onSave: async (data) => {
+                    const res = await fetch("/api/customers", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
+                    const created = await res.json();
+                    setCustomers((prev) => [...prev, created]);
+                    return { id: created.id, name: `${created.name}${created.lastName ? " " + created.lastName : ""}` };
+                  },
+                }}
               />
               {errors.customerId && <p className="text-xs text-red-600 mt-1">{errors.customerId}</p>}
             </div>
@@ -265,6 +280,21 @@ export function OrdersPage() {
                     value={item.productId ? Number(item.productId) : null}
                     onChange={(v) => updateItem(idx, { productId: v != null ? String(v) : "" })}
                     placeholder="Select…"
+                    quickCreate={{
+                      label: "Add New Product",
+                      fields: [
+                        { key: "name", label: "Name", required: true },
+                        { key: "price", label: "Price", required: true },
+                        { key: "quantity", label: "Quantity", required: true },
+                        { key: "category", label: "Category" },
+                      ],
+                      onSave: async (data) => {
+                        const res = await fetch("/api/products", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: data.name, price: data.price, quantity: data.quantity, category: data.category || undefined }) });
+                        const created = await res.json();
+                        setProducts((prev) => [...prev, created]);
+                        return { id: created.id, name: created.name };
+                      },
+                    }}
                   />
                 </div>
                 <div>

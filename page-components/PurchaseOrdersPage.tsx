@@ -225,6 +225,21 @@ export function PurchaseOrdersPage() {
                 placeholder="Select vendor…"
                 hasError={!!errors.vendorId}
                 clearable
+                quickCreate={{
+                  label: "Add New Vendor",
+                  fields: [
+                    { key: "name", label: "Name", required: true },
+                    { key: "email", label: "Email", type: "email" },
+                    { key: "phone", label: "Phone", type: "tel" },
+                    { key: "address", label: "Address" },
+                  ],
+                  onSave: async (data) => {
+                    const res = await fetch("/api/vendors", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
+                    const created = await res.json();
+                    setVendors((prev) => [...prev, created]);
+                    return { id: created.id, name: created.name };
+                  },
+                }}
               />
               {errors.vendorId && <p className="text-xs text-red-600 mt-1">{errors.vendorId}</p>}
             </div>
@@ -297,6 +312,21 @@ export function PurchaseOrdersPage() {
                         onChange={(v) => updateItem(idx, "productId", Number(v ?? 0))}
                         placeholder="Select product…"
                         hasError={!!errors[`item_${idx}_product`]}
+                        quickCreate={{
+                          label: "Add New Product",
+                          fields: [
+                            { key: "name", label: "Name", required: true },
+                            { key: "price", label: "Price", required: true },
+                            { key: "quantity", label: "Quantity", required: true },
+                            { key: "category", label: "Category" },
+                          ],
+                          onSave: async (data) => {
+                            const res = await fetch("/api/products", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: data.name, price: data.price, quantity: data.quantity, category: data.category || undefined }) });
+                            const created = await res.json();
+                            setProducts((prev) => [...prev, created]);
+                            return { id: created.id, name: created.name };
+                          },
+                        }}
                       />
                       {errors[`item_${idx}_product`] && <p className="text-xs text-red-600 mt-0.5">{errors[`item_${idx}_product`]}</p>}
                     </td>
