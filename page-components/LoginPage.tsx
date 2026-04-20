@@ -270,3 +270,4 @@ export function LoginPage() {
     </div>
   );
 }
+// slate-900 theme
