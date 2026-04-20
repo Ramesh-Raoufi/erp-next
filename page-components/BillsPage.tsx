@@ -250,6 +250,21 @@ export function BillsPage() {
                 placeholder="Select vendor…"
                 hasError={!!errors.vendorId}
                 clearable
+                quickCreate={{
+                  label: "Add New Vendor",
+                  fields: [
+                    { key: "name", label: "Name", required: true },
+                    { key: "email", label: "Email", type: "email" },
+                    { key: "phone", label: "Phone", type: "tel" },
+                    { key: "address", label: "Address" },
+                  ],
+                  onSave: async (data) => {
+                    const res = await fetch("/api/vendors", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
+                    const created = await res.json();
+                    setVendors((prev) => [...prev, created]);
+                    return { id: created.id, name: created.name };
+                  },
+                }}
               />
               {errors.vendorId && <p className="text-xs text-red-600 mt-1">{errors.vendorId}</p>}
             </div>

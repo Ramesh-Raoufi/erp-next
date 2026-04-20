@@ -267,6 +267,21 @@ export function InvoicesPage() {
                 placeholder="Select customer…"
                 hasError={!!errors.customerId}
                 clearable
+                quickCreate={{
+                  label: "Add New Customer",
+                  fields: [
+                    { key: "name", label: "First Name", required: true },
+                    { key: "lastName", label: "Last Name" },
+                    { key: "email", label: "Email", type: "email" },
+                    { key: "phone", label: "Phone", type: "tel" },
+                  ],
+                  onSave: async (data) => {
+                    const res = await fetch("/api/customers", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
+                    const created = await res.json();
+                    setCustomers((prev) => [...prev, created]);
+                    return { id: created.id, name: `${created.name}${created.lastName ? " " + created.lastName : ""}` };
+                  },
+                }}
               />
               {errors.customerId && <p className="text-xs text-red-600 mt-1">{errors.customerId}</p>}
             </div>
