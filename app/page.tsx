@@ -1,6 +1,6 @@
 "use client";
-import { StoreHomePage } from "@/page-components/StoreHomePage";
+import { LoginPage } from "@/page-components/LoginPage";
 
 export default function Page() {
-  return <StoreHomePage />;
+  return <LoginPage />;
 }
