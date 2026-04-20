@@ -40,7 +40,7 @@ export function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-      <div style={{width: '360px'}} className="space-y-6">
+      <div style={{width: '440px', maxWidth: '100%'}} className="space-y-6">
 
         {/* Header */}
         <div className="text-center">
