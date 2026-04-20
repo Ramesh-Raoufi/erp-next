@@ -84,7 +84,7 @@ export function LoginPage() {
 
         {/* Main content */}
         <div className="flex-1 flex items-center justify-center px-6 pb-12">
-          <div className="w-full max-w-sm">
+          <div className="w-full max-w-[360px] bg-white rounded-2xl border border-gray-200 p-8" style={{boxShadow: '0 2px 12px rgba(0,0,0,0.07)'}}>
 
             {/* Heading */}
             <div className="mb-8">
