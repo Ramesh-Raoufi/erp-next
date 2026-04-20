@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Eye, EyeOff, Package, TrendingUp, Truck, BarChart3, Shield, ArrowRight, ChevronLeft } from "lucide-react";
+import { Eye, EyeOff, Package, TrendingUp, Truck, BarChart3, ArrowRight, ChevronLeft, Zap } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 
 const FEATURES = [
@@ -29,7 +29,6 @@ export function LoginPage() {
     if (token) router.replace("/app/dashboard");
   }, [router, token]);
 
-  // Auto-cycle features
   useEffect(() => {
     const t = setInterval(() => setActiveFeature((i) => (i + 1) % FEATURES.length), 3000);
     return () => clearInterval(t);
@@ -50,47 +49,55 @@ export function LoginPage() {
     }
   }
 
+  const inputCls = "w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all bg-white";
+
   return (
-    <div className="min-h-screen flex bg-white">
+    <div className="min-h-screen flex">
 
-      {/* ─── LEFT PANEL ─── */}
-      <div className="hidden lg:flex lg:w-[55%] relative overflow-hidden bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900">
+      {/* ── LEFT PANEL ── */}
+      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden" style={{ background: "linear-gradient(135deg, #0f0c29, #302b63, #24243e)" }}>
 
-        {/* Decorative circles */}
-        <div className="absolute -top-32 -left-32 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl" />
-        <div className="absolute -bottom-32 -right-32 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-600/5 rounded-full" />
+        {/* Glowing orbs */}
+        <div className="absolute top-20 left-10 w-72 h-72 rounded-full opacity-20" style={{ background: "radial-gradient(circle, #a855f7, transparent)" }} />
+        <div className="absolute bottom-20 right-10 w-96 h-96 rounded-full opacity-15" style={{ background: "radial-gradient(circle, #6366f1, transparent)" }} />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full opacity-10" style={{ background: "radial-gradient(circle, #8b5cf6, transparent)" }} />
+
+        {/* Grid pattern overlay */}
+        <div className="absolute inset-0 opacity-5" style={{
+          backgroundImage: "linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)",
+          backgroundSize: "40px 40px"
+        }} />
 
         <div className="relative z-10 flex flex-col justify-between p-14 w-full">
 
           {/* Logo */}
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/30">
-              <BarChart3 className="h-5 w-5 text-white" />
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "linear-gradient(135deg, #a855f7, #6366f1)" }}>
+              <Zap className="h-5 w-5 text-white" />
             </div>
             <span className="text-white font-bold text-xl tracking-tight">ERP System</span>
           </div>
 
-          {/* Main content */}
+          {/* Hero text */}
           <div className="space-y-10">
             <div>
-              <div className="inline-flex items-center gap-2 bg-blue-500/20 border border-blue-400/30 rounded-full px-4 py-1.5 mb-6">
+              <div className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 mb-6 border border-purple-400/30" style={{ background: "rgba(168,85,247,0.15)" }}>
                 <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-                <span className="text-blue-200 text-xs font-medium">All systems operational</span>
+                <span className="text-purple-200 text-xs font-medium">All systems operational</span>
               </div>
-              <h1 className="text-5xl font-bold text-white leading-tight tracking-tight">
-                Run your business<br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400">
-                  with confidence
+              <h1 className="text-5xl font-extrabold text-white leading-tight tracking-tight">
+                Business at<br />
+                <span style={{ background: "linear-gradient(90deg, #a855f7, #6366f1, #06b6d4)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+                  full speed
                 </span>
               </h1>
-              <p className="mt-5 text-blue-200/80 text-lg leading-relaxed max-w-md">
-                The complete ERP solution for logistics, finance, and inventory — all in one place.
+              <p className="mt-5 text-purple-200/70 text-base leading-relaxed max-w-sm">
+                The complete ERP for logistics, finance, and inventory — all in one powerful platform.
               </p>
             </div>
 
-            {/* Feature cards */}
-            <div className="space-y-3">
+            {/* Animated features */}
+            <div className="space-y-2">
               {FEATURES.map((feat, i) => {
                 const Icon = feat.icon;
                 const isActive = i === activeFeature;
@@ -99,53 +106,66 @@ export function LoginPage() {
                     key={feat.title}
                     type="button"
                     onClick={() => setActiveFeature(i)}
-                    className={`w-full flex items-center gap-4 p-4 rounded-2xl transition-all duration-300 text-left ${
-                      isActive
-                        ? "bg-white/10 border border-white/20 shadow-lg"
-                        : "hover:bg-white/5 border border-transparent"
+                    className={`w-full flex items-center gap-4 p-4 rounded-2xl text-left transition-all duration-500 ${
+                      isActive ? "border border-purple-400/40" : "border border-transparent hover:border-white/10"
                     }`}
+                    style={isActive ? { background: "rgba(168,85,247,0.2)" } : { background: "rgba(255,255,255,0.03)" }}
                   >
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-all ${
-                      isActive ? "bg-blue-500 shadow-lg shadow-blue-500/40" : "bg-white/10"
-                    }`}>
-                      <Icon className={`h-5 w-5 ${isActive ? "text-white" : "text-blue-300"}`} />
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-all`}
+                      style={isActive
+                        ? { background: "linear-gradient(135deg, #a855f7, #6366f1)" }
+                        : { background: "rgba(255,255,255,0.08)" }
+                      }
+                    >
+                      <Icon className="h-5 w-5 text-white" />
                     </div>
-                    <div>
-                      <p className={`font-semibold text-sm ${isActive ? "text-white" : "text-blue-200"}`}>{feat.title}</p>
-                      <p className={`text-xs mt-0.5 ${isActive ? "text-blue-200" : "text-blue-400"}`}>{feat.desc}</p>
+                    <div className="flex-1">
+                      <p className={`font-semibold text-sm ${isActive ? "text-white" : "text-purple-200"}`}>{feat.title}</p>
+                      <p className={`text-xs mt-0.5 ${isActive ? "text-purple-200" : "text-purple-400"}`}>{feat.desc}</p>
                     </div>
-                    {isActive && <ArrowRight className="h-4 w-4 text-blue-300 ml-auto shrink-0" />}
+                    {isActive && (
+                      <div className="w-1.5 h-8 rounded-full shrink-0" style={{ background: "linear-gradient(180deg, #a855f7, #6366f1)" }} />
+                    )}
                   </button>
                 );
               })}
             </div>
-          </div>
 
-          {/* Footer */}
-          <div className="flex items-center justify-between">
-            <p className="text-blue-400/60 text-xs">© {new Date().getFullYear()} ERP System</p>
-            <div className="flex items-center gap-1.5">
-              <Shield className="h-3.5 w-3.5 text-blue-400/60" />
-              <span className="text-blue-400/60 text-xs">Secured & Encrypted</span>
+            {/* Progress dots */}
+            <div className="flex items-center gap-2">
+              {FEATURES.map((_, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => setActiveFeature(i)}
+                  className="h-1.5 rounded-full transition-all duration-300"
+                  style={{
+                    width: i === activeFeature ? "24px" : "6px",
+                    background: i === activeFeature ? "#a855f7" : "rgba(255,255,255,0.2)"
+                  }}
+                />
+              ))}
             </div>
           </div>
+
+          <p className="text-purple-400/50 text-xs">© {new Date().getFullYear()} ERP System · All rights reserved</p>
         </div>
       </div>
 
-      {/* ─── RIGHT PANEL ─── */}
-      <div className="flex-1 flex items-center justify-center p-6 lg:p-12 bg-gray-50">
-        <div className="w-full max-w-[400px]">
+      {/* ── RIGHT PANEL ── */}
+      <div className="flex-1 flex items-center justify-center p-6 lg:p-12" style={{ background: "#f8f7ff" }}>
+        <div className="w-full max-w-[420px]">
 
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center gap-2 mb-10">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-              <BarChart3 className="h-4 w-4 text-white" />
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "linear-gradient(135deg, #a855f7, #6366f1)" }}>
+              <Zap className="h-4 w-4 text-white" />
             </div>
             <span className="font-bold text-gray-900">ERP System</span>
           </div>
 
           {/* Card */}
-          <div className="bg-white rounded-3xl shadow-xl shadow-gray-200/60 border border-gray-100 p-8">
+          <div className="bg-white rounded-3xl p-8 shadow-2xl" style={{ boxShadow: "0 25px 60px rgba(139, 92, 246, 0.12), 0 4px 20px rgba(0,0,0,0.06)" }}>
 
             {/* Header */}
             <div className="mb-8">
@@ -153,72 +173,53 @@ export function LoginPage() {
                 <button
                   type="button"
                   onClick={() => { setMode("login"); setError(null); }}
-                  className="flex items-center gap-1 text-sm text-gray-400 hover:text-gray-600 mb-4 transition-colors"
+                  className="flex items-center gap-1 text-sm text-gray-400 hover:text-gray-600 mb-5 transition-colors"
                 >
-                  <ChevronLeft className="h-4 w-4" /> Back to sign in
+                  <ChevronLeft className="h-4 w-4" /> Back
                 </button>
               )}
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-5" style={{ background: "linear-gradient(135deg, #f3f0ff, #ede9fe)" }}>
+                <span className="text-2xl">{mode === "login" ? "👋" : "🚀"}</span>
+              </div>
               <h2 className="text-2xl font-bold text-gray-900">
-                {mode === "login" ? "Welcome back 👋" : "Setup your account"}
+                {mode === "login" ? "Welcome back!" : "Get started"}
               </h2>
-              <p className="text-sm text-gray-500 mt-1">
-                {mode === "login"
-                  ? "Enter your credentials to access the dashboard"
-                  : "Create the first admin account for your ERP"}
+              <p className="text-sm text-gray-500 mt-1.5">
+                {mode === "login" ? "Sign in to your ERP dashboard" : "Create the first admin account"}
               </p>
             </div>
 
             {/* Error */}
             {error && (
-              <div className="mb-5 rounded-xl bg-red-50 border border-red-100 px-4 py-3 text-sm text-red-600 flex items-center gap-2">
-                <span className="text-lg">⚠️</span>
-                <span>{error}</span>
+              <div className="mb-5 rounded-xl px-4 py-3 text-sm flex items-center gap-2" style={{ background: "#fff1f2", border: "1px solid #fecdd3", color: "#e11d48" }}>
+                <span>⚠️</span> {error}
               </div>
             )}
 
             <form onSubmit={onSubmit} className="space-y-4">
-
               {mode === "bootstrap" && (
                 <>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">First Name</label>
-                      <input
-                        className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white focus:border-transparent transition-all"
-                        placeholder="Ahmad"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        required
-                      />
+                      <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wider">First Name</label>
+                      <input className={inputCls} placeholder="Ahmad" value={name} onChange={(e) => setName(e.target.value)} required />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Last Name</label>
-                      <input
-                        className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white focus:border-transparent transition-all"
-                        placeholder="Raoufi"
-                        value={lastName}
-                        onChange={(e) => setLastName(e.target.value)}
-                      />
+                      <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wider">Last Name</label>
+                      <input className={inputCls} placeholder="Raoufi" value={lastName} onChange={(e) => setLastName(e.target.value)} />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Email</label>
-                    <input
-                      type="email"
-                      className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white focus:border-transparent transition-all"
-                      placeholder="admin@company.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                    />
+                    <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wider">Email</label>
+                    <input type="email" className={inputCls} placeholder="admin@company.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
                   </div>
                 </>
               )}
 
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Username</label>
+                <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wider">Username</label>
                 <input
-                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white focus:border-transparent transition-all"
+                  className={inputCls}
                   placeholder="your_username"
                   value={mode === "login" ? loginUsername : username}
                   onChange={(e) => mode === "login" ? setLoginUsername(e.target.value) : setUsername(e.target.value)}
@@ -228,11 +229,11 @@ export function LoginPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Password</label>
+                <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wider">Password</label>
                 <div className="relative">
                   <input
                     type={showPassword ? "text" : "password"}
-                    className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 pr-12 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white focus:border-transparent transition-all"
+                    className={inputCls + " pr-12"}
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -242,7 +243,7 @@ export function LoginPage() {
                   <button
                     type="button"
                     onClick={() => setShowPassword((p) => !p)}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-lg hover:bg-gray-100"
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100 transition-colors"
                     tabIndex={-1}
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -253,7 +254,8 @@ export function LoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full mt-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-3.5 text-sm transition-all shadow-lg shadow-blue-500/30 hover:shadow-blue-500/40 disabled:opacity-60 flex items-center justify-center gap-2"
+                className="w-full mt-2 rounded-xl text-white font-bold py-3.5 text-sm transition-all flex items-center justify-center gap-2 disabled:opacity-60"
+                style={{ background: "linear-gradient(135deg, #a855f7, #6366f1)", boxShadow: "0 8px 24px rgba(139,92,246,0.4)" }}
               >
                 {loading ? (
                   <>
@@ -265,7 +267,7 @@ export function LoginPage() {
                   </>
                 ) : (
                   <>
-                    {mode === "login" ? "Sign In" : "Create Admin Account"}
+                    {mode === "login" ? "Sign In" : "Create Account"}
                     <ArrowRight className="h-4 w-4" />
                   </>
                 )}
@@ -273,23 +275,21 @@ export function LoginPage() {
             </form>
 
             {mode === "login" && (
-              <div className="mt-6 pt-6 border-t border-gray-100 text-center">
-                <p className="text-xs text-gray-400 mb-2">First time here?</p>
+              <div className="mt-6 pt-5 border-t border-gray-100 text-center">
+                <p className="text-xs text-gray-400 mb-2">First time setting up?</p>
                 <button
                   type="button"
                   onClick={() => { setMode("bootstrap"); setError(null); }}
-                  className="text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors"
+                  className="text-sm font-semibold transition-colors"
+                  style={{ color: "#a855f7" }}
                 >
-                  Setup Admin Account →
+                  Create Admin Account →
                 </button>
               </div>
             )}
           </div>
 
-          {/* Bottom note */}
-          <p className="text-center text-xs text-gray-400 mt-6">
-            Protected by enterprise-grade security
-          </p>
+          <p className="text-center text-xs text-gray-400 mt-5">🔒 Secured with JWT authentication</p>
         </div>
       </div>
     </div>
