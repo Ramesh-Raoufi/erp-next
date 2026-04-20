@@ -1,85 +1,129 @@
 'use client';
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState, useEffect } from "react";
 import { useCart } from "@/lib/cart";
-import { formatCurrency } from "@/lib/store";
 
 const nav = [
-  { label: "Shop", to: "/products", active: true },
-  { label: "Story", to: "/#story", active: false },
-  { label: "Collections", to: "/#collections", active: false }
+  { label: "Home", to: "/" },
+  { label: "Products", to: "/products" },
+  { label: "Track Order", to: "/track" },
 ];
 
 export function StoreHeader() {
-  const { totalItems, subtotal } = useCart();
+  const { totalItems } = useCart();
   const pathname = usePathname();
+  const [scrolled, setScrolled] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 10);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   return (
-    <header className="relative z-10 border-b border-black/10 bg-[color:rgba(246,241,231,0.86)] backdrop-blur">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-6 py-5 md:flex-row md:items-center md:justify-between">
-        <div className="flex items-center justify-between gap-4">
-          <Link href="/" className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full border border-black/15 bg-[color:var(--store-mist)] text-lg font-semibold text-[color:var(--store-forest)]">
-              N
-            </div>
-            <div>
-              <div className="store-font-display text-lg font-semibold tracking-tight">
-                Northwind Market
-              </div>
-              <div className="text-xs uppercase tracking-[0.2em] text-[color:var(--store-forest)]/70">
-                Everyday essentials
-              </div>
-            </div>
-          </Link>
+    <header
+      className={`sticky top-0 z-50 transition-all duration-300 ${
+        scrolled
+          ? "border-b border-white/10 bg-slate-950/80 backdrop-blur-lg shadow-lg"
+          : "bg-slate-950"
+      }`}
+    >
+      <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-6 py-4">
+        {/* Logo */}
+        <Link href="/" className="flex items-center gap-3 shrink-0">
+          <div
+            className="flex h-9 w-9 items-center justify-center rounded-xl text-white text-lg"
+            style={{ background: "linear-gradient(135deg, #7c3aed, #6366f1)" }}
+          >
+            📦
+          </div>
+          <div className="text-white font-bold text-lg tracking-tight">
+            ERP Store
+          </div>
+        </Link>
+
+        {/* Desktop nav */}
+        <nav className="hidden md:flex items-center gap-1">
+          {nav.map((item) => (
+            <Link
+              key={item.to}
+              href={item.to}
+              className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+                pathname === item.to
+                  ? "bg-purple-600 text-white"
+                  : "text-white/70 hover:text-white hover:bg-white/10"
+              }`}
+            >
+              {item.label}
+            </Link>
+          ))}
+        </nav>
+
+        {/* Right actions */}
+        <div className="flex items-center gap-3">
           <Link
             href="/cart"
-            className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white px-4 py-2 text-sm font-medium shadow-sm"
+            className="relative flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/20"
           >
-            <span>Cart</span>
-            <span className="rounded-full bg-[color:var(--store-forest)] px-2 py-0.5 text-xs text-white">
-              {totalItems}
-            </span>
+            🛒 Cart
+            {totalItems > 0 && (
+              <span
+                className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold text-white"
+                style={{ background: "linear-gradient(135deg, #7c3aed, #6366f1)" }}
+              >
+                {totalItems}
+              </span>
+            )}
           </Link>
-        </div>
-
-        <nav className="flex flex-wrap items-center gap-4 text-sm">
-          {nav.map((item) =>
-            item.active ? (
-              <Link
-                key={item.to}
-                href={item.to}
-                className={`rounded-full px-3 py-1 transition ${
-                  pathname === item.to
-                    ? "bg-[color:var(--store-forest)] text-white"
-                    : "text-[color:var(--store-forest)]/80 hover:bg-white"
-                }`}
-              >
-                {item.label}
-              </Link>
-            ) : (
-              <Link
-                key={item.to}
-                href={item.to}
-                className="rounded-full px-3 py-1 text-[color:var(--store-forest)]/80 transition hover:bg-white"
-              >
-                {item.label}
-              </Link>
-            ),
-          )}
-          <div className="ml-2 hidden items-center gap-2 rounded-full border border-black/10 bg-white px-3 py-1.5 text-xs text-[color:var(--store-forest)]/70 md:flex">
-            <span>Subtotal</span>
-            <span className="font-semibold text-[color:var(--store-ink)]">
-              {formatCurrency(subtotal)}
-            </span>
-          </div>
           <Link
             href="/login"
-            className="ml-auto text-xs uppercase tracking-[0.2em] text-[color:var(--store-forest)]/70 hover:text-[color:var(--store-forest)]"
+            className="hidden md:block text-xs uppercase tracking-widest text-white/50 hover:text-white/80 transition"
           >
             Admin
           </Link>
-        </nav>
+          {/* Mobile hamburger */}
+          <button
+            className="md:hidden text-white/70 hover:text-white transition"
+            onClick={() => setMenuOpen((v) => !v)}
+            aria-label="Toggle menu"
+          >
+            {menuOpen ? (
+              <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            ) : (
+              <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            )}
+          </button>
+        </div>
       </div>
+
+      {/* Mobile menu */}
+      {menuOpen && (
+        <div className="md:hidden border-t border-white/10 bg-slate-950 px-6 py-4">
+          {nav.map((item) => (
+            <Link
+              key={item.to}
+              href={item.to}
+              className="block rounded-xl px-4 py-3 text-sm font-medium text-white/80 hover:bg-white/10 hover:text-white transition"
+              onClick={() => setMenuOpen(false)}
+            >
+              {item.label}
+            </Link>
+          ))}
+          <Link
+            href="/login"
+            className="mt-2 block rounded-xl px-4 py-3 text-xs uppercase tracking-widest text-white/40 hover:text-white/70 transition"
+            onClick={() => setMenuOpen(false)}
+          >
+            Admin
+          </Link>
+        </div>
+      )}
     </header>
   );
 }
