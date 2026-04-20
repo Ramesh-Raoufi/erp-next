@@ -36,33 +36,33 @@ export function LoginPage() {
     }
   }
 
-  const inp = "block w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition";
+  const inp = "block w-full rounded-xl border border-gray-200 bg-gray-50/80 px-4 py-3.5 text-sm text-gray-900 placeholder-gray-400 focus:bg-white focus:border-blue-500 focus:ring-3 focus:ring-blue-100 focus:outline-none transition";
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="w-full max-w-[420px]">
 
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-blue-600 shadow-lg shadow-blue-200 mb-4">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-blue-600 mb-5" style={{boxShadow: '0 8px 24px rgba(37,99,235,0.35)'}}>
             <LayoutDashboard className="h-8 w-8 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">ERP System</h1>
-          <p className="text-sm text-gray-500 mt-1">Business Management Platform</p>
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">ERP System</h1>
+          <p className="text-sm text-gray-400 mt-1">Business Management Platform</p>
         </div>
 
         {/* Card */}
-        <div className="bg-white rounded-3xl shadow-xl shadow-gray-200/60 border border-gray-100 overflow-hidden">
+        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden" style={{boxShadow: '0 4px 32px rgba(0,0,0,0.08)'}}>
 
           {/* Tab switcher */}
-          <div className="flex border-b border-gray-100">
+          <div className="flex border-b border-gray-100 bg-gray-50/60">
             <button
               type="button"
               onClick={() => { setMode("login"); setError(null); }}
-              className={`flex-1 py-4 text-sm font-semibold transition-colors ${
+              className={`flex-1 py-3.5 text-sm font-semibold transition-all ${
                 mode === "login"
-                  ? "text-blue-600 border-b-2 border-blue-600 bg-blue-50/50"
-                  : "text-gray-400 hover:text-gray-600"
+                  ? "text-blue-600 border-b-2 border-blue-600 bg-white"
+                  : "text-gray-400 hover:text-gray-500"
               }`}
             >
               Sign In
@@ -70,10 +70,10 @@ export function LoginPage() {
             <button
               type="button"
               onClick={() => { setMode("bootstrap"); setError(null); }}
-              className={`flex-1 py-4 text-sm font-semibold transition-colors ${
+              className={`flex-1 py-3.5 text-sm font-semibold transition-all ${
                 mode === "bootstrap"
-                  ? "text-blue-600 border-b-2 border-blue-600 bg-blue-50/50"
-                  : "text-gray-400 hover:text-gray-600"
+                  ? "text-blue-600 border-b-2 border-blue-600 bg-white"
+                  : "text-gray-400 hover:text-gray-500"
               }`}
             >
               Setup Admin
@@ -81,8 +81,8 @@ export function LoginPage() {
           </div>
 
           {/* Form */}
-          <div className="p-8">
-            <p className="text-sm text-gray-500 mb-6">
+          <div className="p-7">
+            <p className="text-sm text-gray-400 mb-6">
               {mode === "login"
                 ? "Enter your credentials to access the dashboard."
                 : "Create the first administrator account."}
@@ -152,7 +152,7 @@ export function LoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold py-3 text-sm transition-colors disabled:opacity-50 flex items-center justify-center gap-2 mt-2"
+                className="w-full rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white font-semibold py-3.5 text-sm transition-all disabled:opacity-50 flex items-center justify-center gap-2 mt-2"
               >
                 {loading ? (
                   <>
@@ -168,8 +168,8 @@ export function LoginPage() {
           </div>
         </div>
 
-        <p className="text-center text-xs text-gray-400 mt-6">
-          Secure business management platform
+        <p className="text-center text-xs text-gray-300 mt-5">
+          🔒 Secure business management platform
         </p>
       </div>
     </div>
