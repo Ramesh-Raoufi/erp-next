@@ -393,43 +393,49 @@ export function OrdersPage() {
         }
       >
         <div className="mb-4 rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="grid gap-0 lg:grid-cols-[1.2fr_1fr_1fr_1fr]">
-            <div className="border-b border-slate-200 px-4 py-4 lg:border-b-0 lg:border-r">
-              <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Search orders</p>
-              <div className="relative mt-3">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="text"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Code, customer, route..."
-                  className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-4 text-sm text-slate-900 outline-none transition focus:border-slate-300"
-                />
-              </div>
-              <p className="mt-3 text-sm text-slate-500">
-                Showing <span className="font-medium text-slate-900">{filteredOrders.length}</span> of {orders.length} orders.
-              </p>
-            </div>
-
-            <div className="border-b border-slate-200 px-4 py-4 lg:border-b-0 lg:border-r">
-              <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Pending</p>
-              <p className="mt-2 text-2xl font-semibold text-slate-950">{pendingCount}</p>
-            </div>
-            <div className="border-b border-slate-200 px-4 py-4 lg:border-b-0 lg:border-r">
-              <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Delivered</p>
-              <p className="mt-2 text-2xl font-semibold text-slate-950">{deliveredCount}</p>
-            </div>
-            <div className="px-4 py-4">
-              <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Order value</p>
-              <p className="mt-2 text-2xl font-semibold text-slate-950">${totalOrderValue.toFixed(2)}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div className="border-b border-slate-200 px-4 py-4 sm:px-5">
-            <h2 className="text-base font-semibold text-slate-950">Order list</h2>
-            <p className="mt-1 text-sm text-slate-500">Track orders, route details, and customer activity in one table.</p>
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <h2 className="text-base font-semibold text-slate-950">Orders overview</h2>
+                <p className="mt-1 text-sm text-slate-500">Track orders, route details, and customer activity from one place.</p>
+              </div>
+              <div className="w-full lg:w-[360px]">
+                <label className="mb-2 block text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Search</label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Search orders..."
+                    className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-4 text-sm text-slate-900 outline-none transition focus:border-slate-300"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 grid gap-3 md:grid-cols-3">
+              <div className="rounded-xl bg-slate-50 px-4 py-3">
+                <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Pending</p>
+                <p className="mt-2 text-2xl font-semibold text-slate-950">{pendingCount}</p>
+              </div>
+              <div className="rounded-xl bg-slate-50 px-4 py-3">
+                <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Delivered</p>
+                <p className="mt-2 text-2xl font-semibold text-slate-950">{deliveredCount}</p>
+              </div>
+              <div className="rounded-xl bg-slate-50 px-4 py-3">
+                <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Order value</p>
+                <p className="mt-2 text-2xl font-semibold text-slate-950">${totalOrderValue.toFixed(2)}</p>
+              </div>
+            </div>
+
+            <p className="mt-4 text-sm text-slate-500">
+              Showing <span className="font-medium text-slate-900">{filteredOrders.length}</span> of {orders.length} orders.
+            </p>
+          </div>
+
+          <div className="border-b border-slate-200 px-4 py-4 sm:px-5">
+            <h3 className="text-base font-semibold text-slate-950">Order list</h3>
           </div>
 
           <PageTable
