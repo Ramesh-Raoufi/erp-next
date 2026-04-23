@@ -39,53 +39,54 @@ export function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f4f7fb] px-4 py-10 text-slate-900">
-      <div className="mx-auto grid min-h-[calc(100vh-5rem)] w-full max-w-6xl items-center gap-10 lg:grid-cols-[1.1fr_0.9fr]">
-        <section className="hidden lg:block">
+    <div className="min-h-screen bg-slate-950 px-4 py-6 text-slate-900 sm:py-8">
+      <div className="mx-auto grid min-h-[calc(100vh-3rem)] w-full max-w-7xl overflow-hidden rounded-[36px] border border-white/10 bg-white shadow-[0_30px_100px_rgba(15,23,42,0.35)] lg:grid-cols-[1.15fr_0.85fr]">
+        <section className="hidden bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 px-10 py-12 text-white lg:flex lg:flex-col lg:justify-between">
           <div className="max-w-xl space-y-8">
-            <div className="inline-flex items-center gap-3 rounded-full bg-white px-4 py-2 text-sm font-medium text-slate-600 shadow-sm ring-1 ring-slate-200">
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-900 text-white">
+            <div className="inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-slate-200 backdrop-blur-sm">
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-slate-950">
                 <LockKeyhole className="h-4 w-4" />
               </span>
-              ERP Next secure workspace
+              ERP Next control access
             </div>
 
             <div className="space-y-4">
-              <p className="text-sm font-semibold uppercase tracking-[0.32em] text-slate-400">ERP NEXT</p>
-              <h1 className="text-5xl font-semibold leading-tight tracking-tight text-slate-950">
-                A calmer login experience for your ERP system.
+              <p className="text-sm font-semibold uppercase tracking-[0.32em] text-blue-200/70">ERP NEXT</p>
+              <h1 className="text-5xl font-semibold leading-tight tracking-tight text-white">
+                Sign in to the operational workspace.
               </h1>
-              <p className="max-w-lg text-base leading-7 text-slate-500">
-                Access inventory, orders, invoices, and reports from one clean workspace designed for focused daily work.
+              <p className="max-w-xl text-base leading-7 text-slate-300">
+                Access products, orders, customers, and finance modules from one focused ERP environment built for daily execution.
               </p>
             </div>
+          </div>
 
-            <div className="grid max-w-xl grid-cols-3 gap-4">
-              {[
-                ["Fast", "Quick access"],
-                ["Clean", "Minimal interface"],
-                ["Safe", "Protected admin area"],
-              ].map(([title, text]) => (
-                <div key={title} className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
-                  <p className="text-sm font-semibold text-slate-900">{title}</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-500">{text}</p>
-                </div>
-              ))}
-            </div>
+          <div className="grid gap-4 sm:grid-cols-3">
+            {[
+              ["Orders", "Track delivery flow and status"],
+              ["Inventory", "Keep stock levels visible"],
+              ["Finance", "Manage invoices and payments"],
+            ].map(([title, text]) => (
+              <div key={title} className="rounded-3xl border border-white/10 bg-white/5 p-5 backdrop-blur-sm">
+                <p className="text-sm font-semibold text-white">{title}</p>
+                <p className="mt-2 text-sm leading-6 text-slate-300">{text}</p>
+              </div>
+            ))}
           </div>
         </section>
 
-        <section className="mx-auto w-full max-w-md">
-          <div className="rounded-[32px] bg-white p-6 shadow-[0_24px_80px_rgba(15,23,42,0.08)] ring-1 ring-slate-200 sm:p-8">
-            <div className="mb-8 flex items-center justify-between gap-4">
+        <section className="mx-auto flex w-full max-w-md items-center px-5 py-8 sm:px-8 lg:max-w-none lg:px-12">
+          <div className="w-full rounded-[32px] bg-white p-1 sm:p-2">
+            <div className="rounded-[28px] bg-slate-50 p-6 ring-1 ring-slate-200 sm:p-8">
+              <div className="mb-8 flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.32em] text-slate-400">ERP NEXT</p>
                 <h2 className="mt-3 text-3xl font-semibold tracking-tight text-slate-950">
-                  {mode === "login" ? "Sign in" : "Create admin account"}
+                  {mode === "login" ? "Welcome back" : "Create admin account"}
                 </h2>
                 <p className="mt-2 text-sm leading-6 text-slate-500">
                   {mode === "login"
-                    ? "Use your account to open the dashboard."
+                    ? "Sign in to continue to your ERP workspace."
                     : "Set up the first administrator for this workspace."}
                 </p>
               </div>
@@ -188,36 +189,37 @@ export function LoginPage() {
               </Button>
             </form>
 
-            <div className="mt-6 text-center text-sm text-slate-500">
-              {mode === "login" ? (
-                <>
-                  First time here?{" "}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMode("bootstrap");
-                      setError(null);
-                    }}
-                    className="font-medium text-slate-950 transition hover:text-slate-700"
-                  >
-                    Create admin account
-                  </button>
-                </>
-              ) : (
-                <>
-                  Already have an account?{" "}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMode("login");
-                      setError(null);
-                    }}
-                    className="font-medium text-slate-950 transition hover:text-slate-700"
-                  >
-                    Back to sign in
-                  </button>
-                </>
-              )}
+              <div className="mt-6 text-center text-sm text-slate-500">
+                {mode === "login" ? (
+                  <>
+                    First time here?{" "}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMode("bootstrap");
+                        setError(null);
+                      }}
+                      className="font-medium text-slate-950 transition hover:text-slate-700"
+                    >
+                      Create admin account
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    Already have an account?{" "}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMode("login");
+                        setError(null);
+                      }}
+                      className="font-medium text-slate-950 transition hover:text-slate-700"
+                    >
+                      Back to sign in
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </section>
