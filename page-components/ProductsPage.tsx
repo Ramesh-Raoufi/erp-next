@@ -245,13 +245,29 @@ export function ProductsPage() {
   }
 
   const columns: TableColumn<Product>[] = [
-    { key: "code", label: "Code", render: (r) => r.code ?? "—" },
-    { key: "name", label: "Name" },
-    { key: "category", label: "Category", render: (r) => r.category ?? "—" },
-    { key: "price", label: "Price", align: "right", render: (r) => `$${Number(r.price).toFixed(2)}` },
-    { key: "quantity", label: "Qty", align: "right" },
+    {
+      key: "product",
+      label: "Product",
+      render: (r) => (
+        <div className="min-w-[180px]">
+          <p className="font-medium text-slate-900">{r.name}</p>
+          <p className="text-xs text-slate-500">{r.code ?? "No code"}</p>
+        </div>
+      ),
+    },
+    {
+      key: "category",
+      label: "Category",
+      render: (r) => (
+        <div>
+          <p className="text-slate-900">{r.category ?? "Uncategorized"}</p>
+          <p className="text-xs text-slate-500">Created {formatDate(r.createdAt)}</p>
+        </div>
+      ),
+    },
+    { key: "price", label: "Price", align: "right", render: (r) => <span className="font-medium text-slate-900">${Number(r.price).toFixed(2)}</span> },
+    { key: "quantity", label: "Stock", align: "right", render: (r) => <span className="font-medium text-slate-900">{r.quantity}</span> },
     { key: "isActive", label: "Status", render: (r) => <ActiveBadge active={r.isActive} /> },
-    { key: "createdAt", label: "Created", render: (r) => formatDate(r.createdAt) },
   ];
 
   return (
@@ -268,55 +284,56 @@ export function ProductsPage() {
           </>
         }
       >
-        <div className="mb-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <h2 className="text-lg font-semibold text-slate-950">Product inventory</h2>
-              <p className="mt-1 text-sm text-slate-500">
-                Keep product data clean, searchable, and easy to scan.
-              </p>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-3 lg:min-w-[440px]">
-              <div className="rounded-xl bg-slate-50 px-4 py-3">
-                <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Active</p>
-                <p className="mt-1 text-xl font-semibold text-slate-950">{activeCount}</p>
-              </div>
-              <div className="rounded-xl bg-slate-50 px-4 py-3">
-                <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Low stock</p>
-                <p className="mt-1 text-xl font-semibold text-amber-600">{lowStockCount}</p>
-              </div>
-              <div className="rounded-xl bg-slate-50 px-4 py-3">
-                <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Inventory value</p>
-                <p className="mt-1 text-xl font-semibold text-slate-950">${inventoryValue.toFixed(2)}</p>
-              </div>
-            </div>
+        <div className="mb-4 grid gap-3 md:grid-cols-3">
+          <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+            <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Active</p>
+            <p className="mt-1 text-2xl font-semibold text-slate-950">{activeCount}</p>
           </div>
-
-          <div className="relative mt-4">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search products by code, name, category..."
-              className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm text-slate-900 outline-none transition focus:border-slate-300 focus:bg-white"
-            />
+          <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+            <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Low stock</p>
+            <p className="mt-1 text-2xl font-semibold text-slate-950">{lowStockCount}</p>
           </div>
-          <p className="mt-3 text-sm text-slate-500">
-            Showing <span className="font-medium text-slate-900">{filteredProducts.length}</span> of {products.length} products.
-          </p>
+          <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+            <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Inventory value</p>
+            <p className="mt-1 text-2xl font-semibold text-slate-950">${inventoryValue.toFixed(2)}</p>
+          </div>
         </div>
 
-        <PageTable
-          columns={columns}
-          data={filteredProducts}
-          loading={loading}
-          emptyMessage="No products yet. Add your first product."
-          emptyAction={<Button size="sm" onClick={openCreate}><Plus className="mr-1 h-4 w-4" /> New Product</Button>}
-          onEdit={openEdit}
-          onDelete={(p) => setConfirmDelete({ id: p.id, label: p.name })}
-        />
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="border-b border-slate-200 px-4 py-4 sm:px-5">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <h2 className="text-base font-semibold text-slate-950">Product list</h2>
+                <p className="mt-1 text-sm text-slate-500">Review catalog details, pricing, stock levels, and status in one table.</p>
+              </div>
+              <div className="w-full lg:w-[320px]">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Search products..."
+                    className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-4 text-sm text-slate-900 outline-none transition focus:border-slate-300"
+                  />
+                </div>
+              </div>
+            </div>
+            <p className="mt-3 text-sm text-slate-500">
+              Showing <span className="font-medium text-slate-900">{filteredProducts.length}</span> of {products.length} products.
+            </p>
+          </div>
+
+          <PageTable
+            columns={columns}
+            data={filteredProducts}
+            loading={loading}
+            emptyMessage="No products yet. Add your first product to start building your catalog."
+            emptyAction={<Button size="sm" onClick={openCreate}><Plus className="mr-1 h-4 w-4" /> New Product</Button>}
+            onEdit={openEdit}
+            onDelete={(p) => setConfirmDelete({ id: p.id, label: p.name })}
+          />
+        </div>
       </CrudLayout>
 
       <AlertDialog open={!!confirmDelete} onOpenChange={(o) => !o && setConfirmDelete(null)}>

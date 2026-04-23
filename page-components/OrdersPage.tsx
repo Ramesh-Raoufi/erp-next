@@ -344,13 +344,38 @@ export function OrdersPage() {
   }
 
   const columns: TableColumn<Order>[] = [
-    { key: "code", label: "Code", render: (r) => r.code ?? "—" },
-    { key: "customer", label: "Customer", render: (r) => r.customer ? `${r.customer.name}${r.customer.lastName ? " " + r.customer.lastName : ""}` : String(r.customerId) },
-    { key: "origin", label: "Origin" },
-    { key: "destination", label: "Destination" },
+    {
+      key: "code",
+      label: "Order",
+      render: (r) => (
+        <div className="min-w-[120px]">
+          <p className="font-medium text-slate-900">{r.code ?? `#${r.id}`}</p>
+          <p className="text-xs text-slate-500">{formatDate(r.createdAt)}</p>
+        </div>
+      ),
+    },
+    {
+      key: "customer",
+      label: "Customer",
+      render: (r) => (
+        <div>
+          <p className="font-medium text-slate-900">{r.customer ? `${r.customer.name}${r.customer.lastName ? " " + r.customer.lastName : ""}` : `Customer #${r.customerId}`}</p>
+          <p className="text-xs text-slate-500">ID: {r.customerId}</p>
+        </div>
+      ),
+    },
+    {
+      key: "route",
+      label: "Route",
+      render: (r) => (
+        <div className="min-w-[180px]">
+          <p className="text-slate-900">{r.origin}</p>
+          <p className="text-xs text-slate-500">to {r.destination}</p>
+        </div>
+      ),
+    },
     { key: "status", label: "Status", render: (r) => <StatusBadge status={r.status} /> },
-    { key: "totalPrice", label: "Total", align: "right", render: (r) => `$${Number(r.totalPrice).toFixed(2)}` },
-    { key: "createdAt", label: "Created", render: (r) => formatDate(r.createdAt) },
+    { key: "totalPrice", label: "Total", align: "right", render: (r) => <span className="font-medium text-slate-900">${Number(r.totalPrice).toFixed(2)}</span> },
   ];
 
   return (
@@ -367,55 +392,56 @@ export function OrdersPage() {
           </>
         }
       >
-        <div className="mb-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <h2 className="text-lg font-semibold text-slate-950">Orders overview</h2>
-              <p className="mt-1 text-sm text-slate-500">
-                Review order flow, delivery status, and totals without visual clutter.
-              </p>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-3 lg:min-w-[440px]">
-              <div className="rounded-xl bg-slate-50 px-4 py-3">
-                <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Pending</p>
-                <p className="mt-1 text-xl font-semibold text-amber-600">{pendingCount}</p>
-              </div>
-              <div className="rounded-xl bg-slate-50 px-4 py-3">
-                <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Delivered</p>
-                <p className="mt-1 text-xl font-semibold text-emerald-600">{deliveredCount}</p>
-              </div>
-              <div className="rounded-xl bg-slate-50 px-4 py-3">
-                <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Order value</p>
-                <p className="mt-1 text-xl font-semibold text-slate-950">${totalOrderValue.toFixed(2)}</p>
-              </div>
-            </div>
+        <div className="mb-4 grid gap-3 md:grid-cols-3">
+          <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+            <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Pending</p>
+            <p className="mt-1 text-2xl font-semibold text-slate-950">{pendingCount}</p>
           </div>
-
-          <div className="relative mt-4">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search orders by code, customer, route, status..."
-              className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm text-slate-900 outline-none transition focus:border-slate-300 focus:bg-white"
-            />
+          <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+            <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Delivered</p>
+            <p className="mt-1 text-2xl font-semibold text-slate-950">{deliveredCount}</p>
           </div>
-          <p className="mt-3 text-sm text-slate-500">
-            Showing <span className="font-medium text-slate-900">{filteredOrders.length}</span> of {orders.length} orders.
-          </p>
+          <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+            <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Order value</p>
+            <p className="mt-1 text-2xl font-semibold text-slate-950">${totalOrderValue.toFixed(2)}</p>
+          </div>
         </div>
 
-        <PageTable
-          columns={columns}
-          data={filteredOrders}
-          loading={loading}
-          emptyMessage="No orders yet."
-          emptyAction={<Button size="sm" onClick={openCreate}><Plus className="mr-1 h-4 w-4" /> New Order</Button>}
-          onEdit={openEdit}
-          onDelete={(o) => setConfirmDelete({ id: o.id, label: o.code ? `Order ${o.code}` : `Order #${o.id}` })}
-        />
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="border-b border-slate-200 px-4 py-4 sm:px-5">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <h2 className="text-base font-semibold text-slate-950">Order list</h2>
+                <p className="mt-1 text-sm text-slate-500">Track orders, route details, and customer activity in one table.</p>
+              </div>
+              <div className="w-full lg:w-[320px]">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Search orders..."
+                    className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-4 text-sm text-slate-900 outline-none transition focus:border-slate-300"
+                  />
+                </div>
+              </div>
+            </div>
+            <p className="mt-3 text-sm text-slate-500">
+              Showing <span className="font-medium text-slate-900">{filteredOrders.length}</span> of {orders.length} orders.
+            </p>
+          </div>
+
+          <PageTable
+            columns={columns}
+            data={filteredOrders}
+            loading={loading}
+            emptyMessage="No orders yet. Create your first order to start tracking shipments and totals."
+            emptyAction={<Button size="sm" onClick={openCreate}><Plus className="mr-1 h-4 w-4" /> New Order</Button>}
+            onEdit={openEdit}
+            onDelete={(o) => setConfirmDelete({ id: o.id, label: o.code ? `Order ${o.code}` : `Order #${o.id}` })}
+          />
+        </div>
       </CrudLayout>
 
       <AlertDialog open={!!confirmDelete} onOpenChange={(o) => !o && setConfirmDelete(null)}>
