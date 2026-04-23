@@ -284,68 +284,65 @@ export function ProductsPage() {
           </>
         }
       >
-        <div className="grid gap-0 xl:grid-cols-[300px_minmax(0,1fr)]">
-          <aside className="border-b border-slate-200 bg-slate-50/70 xl:border-b-0 xl:border-r">
-            <div className="p-5">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Catalog</p>
-              <h2 className="mt-2 text-lg font-semibold text-slate-950">Product management</h2>
-              <p className="mt-2 text-sm leading-6 text-slate-500">
-                Organize your catalog, watch stock risk, and keep pricing structured for daily operations.
+        <div className="bg-slate-50/70 px-4 py-4 sm:px-5">
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Catalog management</p>
+              <h2 className="mt-2 text-xl font-semibold text-slate-950">Products workspace</h2>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+                Manage your catalog with a practical workflow, keep stock visible, and review product records in one focused place.
               </p>
             </div>
 
-            <div className="space-y-3 border-t border-slate-200 p-5">
-              <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
-                <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Active</p>
-                <p className="mt-2 text-3xl font-semibold text-slate-950">{activeCount}</p>
-              </div>
-              <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
-                <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Low stock</p>
-                <p className="mt-2 text-3xl font-semibold text-slate-950">{lowStockCount}</p>
-              </div>
-              <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
-                <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Inventory value</p>
-                <p className="mt-2 text-3xl font-semibold text-slate-950">${inventoryValue.toFixed(2)}</p>
-              </div>
-            </div>
-          </aside>
-
-          <div className="min-w-0 bg-white">
-            <div className="border-b border-slate-200 px-4 py-4 sm:px-5">
-              <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-                <div>
-                  <h2 className="text-base font-semibold text-slate-950">Product list</h2>
-                  <p className="mt-1 text-sm text-slate-500">Search, review, and maintain product records from the main table.</p>
-                </div>
-                <div className="w-full lg:w-[360px]">
-                  <label className="mb-2 block text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Search products</label>
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                    <input
-                      type="text"
-                      value={query}
-                      onChange={(e) => setQuery(e.target.value)}
-                      placeholder="Search name, code, category..."
-                      className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-4 text-sm text-slate-900 outline-none transition focus:border-slate-300"
-                    />
-                  </div>
-                </div>
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <label className="mb-2 block text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Search products</label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search name, code, category..."
+                  className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 text-sm text-slate-900 outline-none transition focus:border-slate-300"
+                />
               </div>
               <p className="mt-3 text-sm text-slate-500">
                 Showing <span className="font-medium text-slate-900">{filteredProducts.length}</span> of {products.length} products.
               </p>
             </div>
-
-            <PageTable
-              columns={columns}
-              data={filteredProducts}
-              loading={loading}
-              emptyMessage="No products yet. Add your first product to start building your catalog."
-              emptyAction={<Button size="sm" onClick={openCreate}><Plus className="mr-1 h-4 w-4" /> New Product</Button>}
-              onEdit={openEdit}
-              onDelete={(p) => setConfirmDelete({ id: p.id, label: p.name })}
-            />
           </div>
+
+          <div className="mt-4 grid gap-4 md:grid-cols-3">
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Active products</p>
+              <p className="mt-2 text-3xl font-semibold text-slate-950">{activeCount}</p>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Low stock items</p>
+              <p className="mt-2 text-3xl font-semibold text-slate-950">{lowStockCount}</p>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Inventory value</p>
+              <p className="mt-2 text-3xl font-semibold text-slate-950">${inventoryValue.toFixed(2)}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="border-t border-slate-200 bg-white">
+          <div className="border-b border-slate-200 px-4 py-4 sm:px-5">
+            <h3 className="text-base font-semibold text-slate-950">Product records</h3>
+            <p className="mt-1 text-sm text-slate-500">Review catalog details, pricing, stock levels, and status in one table.</p>
+          </div>
+
+          <PageTable
+            columns={columns}
+            data={filteredProducts}
+            loading={loading}
+            emptyMessage="No products yet. Add your first product to start building your catalog."
+            emptyAction={<Button size="sm" onClick={openCreate}><Plus className="mr-1 h-4 w-4" /> New Product</Button>}
+            onEdit={openEdit}
+            onDelete={(p) => setConfirmDelete({ id: p.id, label: p.name })}
+          />
         </div>
       </CrudLayout>
 

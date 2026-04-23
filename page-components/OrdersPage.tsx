@@ -392,68 +392,65 @@ export function OrdersPage() {
           </>
         }
       >
-        <div className="grid gap-0 xl:grid-cols-[300px_minmax(0,1fr)]">
-          <aside className="border-b border-slate-200 bg-slate-50/70 xl:border-b-0 xl:border-r">
-            <div className="p-5">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Operations</p>
-              <h2 className="mt-2 text-lg font-semibold text-slate-950">Order workflow</h2>
-              <p className="mt-2 text-sm leading-6 text-slate-500">
-                Review current shipment volume, delivery progress, and the orders that need action first.
+        <div className="bg-slate-50/70 px-4 py-4 sm:px-5">
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Order operations</p>
+              <h2 className="mt-2 text-xl font-semibold text-slate-950">Orders workspace</h2>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+                Manage order flow with a practical overview, identify pending work fast, and keep delivery progress visible.
               </p>
             </div>
 
-            <div className="space-y-3 border-t border-slate-200 p-5">
-              <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
-                <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Pending</p>
-                <p className="mt-2 text-3xl font-semibold text-slate-950">{pendingCount}</p>
-              </div>
-              <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
-                <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Delivered</p>
-                <p className="mt-2 text-3xl font-semibold text-slate-950">{deliveredCount}</p>
-              </div>
-              <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
-                <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Order value</p>
-                <p className="mt-2 text-3xl font-semibold text-slate-950">${totalOrderValue.toFixed(2)}</p>
-              </div>
-            </div>
-          </aside>
-
-          <div className="min-w-0 bg-white">
-            <div className="border-b border-slate-200 px-4 py-4 sm:px-5">
-              <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-                <div>
-                  <h2 className="text-base font-semibold text-slate-950">Order list</h2>
-                  <p className="mt-1 text-sm text-slate-500">Search, review, and manage active orders from the main table.</p>
-                </div>
-                <div className="w-full lg:w-[360px]">
-                  <label className="mb-2 block text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Search orders</label>
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                    <input
-                      type="text"
-                      value={query}
-                      onChange={(e) => setQuery(e.target.value)}
-                      placeholder="Search code, customer, route..."
-                      className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-4 text-sm text-slate-900 outline-none transition focus:border-slate-300"
-                    />
-                  </div>
-                </div>
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <label className="mb-2 block text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Search orders</label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search code, customer, route..."
+                  className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 text-sm text-slate-900 outline-none transition focus:border-slate-300"
+                />
               </div>
               <p className="mt-3 text-sm text-slate-500">
                 Showing <span className="font-medium text-slate-900">{filteredOrders.length}</span> of {orders.length} orders.
               </p>
             </div>
-
-            <PageTable
-              columns={columns}
-              data={filteredOrders}
-              loading={loading}
-              emptyMessage="No orders yet. Create your first order to start tracking shipments and totals."
-              emptyAction={<Button size="sm" onClick={openCreate}><Plus className="mr-1 h-4 w-4" /> New Order</Button>}
-              onEdit={openEdit}
-              onDelete={(o) => setConfirmDelete({ id: o.id, label: o.code ? `Order ${o.code}` : `Order #${o.id}` })}
-            />
           </div>
+
+          <div className="mt-4 grid gap-4 md:grid-cols-3">
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Pending orders</p>
+              <p className="mt-2 text-3xl font-semibold text-slate-950">{pendingCount}</p>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Delivered orders</p>
+              <p className="mt-2 text-3xl font-semibold text-slate-950">{deliveredCount}</p>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Order value</p>
+              <p className="mt-2 text-3xl font-semibold text-slate-950">${totalOrderValue.toFixed(2)}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="border-t border-slate-200 bg-white">
+          <div className="border-b border-slate-200 px-4 py-4 sm:px-5">
+            <h3 className="text-base font-semibold text-slate-950">Order records</h3>
+            <p className="mt-1 text-sm text-slate-500">Review customer, route, delivery status, and order value in one table.</p>
+          </div>
+
+          <PageTable
+            columns={columns}
+            data={filteredOrders}
+            loading={loading}
+            emptyMessage="No orders yet. Create your first order to start tracking shipments and totals."
+            emptyAction={<Button size="sm" onClick={openCreate}><Plus className="mr-1 h-4 w-4" /> New Order</Button>}
+            onEdit={openEdit}
+            onDelete={(o) => setConfirmDelete({ id: o.id, label: o.code ? `Order ${o.code}` : `Order #${o.id}` })}
+          />
         </div>
       </CrudLayout>
 
