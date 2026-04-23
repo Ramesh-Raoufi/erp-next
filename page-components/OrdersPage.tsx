@@ -1,6 +1,6 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
-import { Plus, RefreshCw, PlusCircle } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { CircleDollarSign, Plus, RefreshCw, PlusCircle, Search, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { api } from "@/lib/api";
@@ -68,6 +68,7 @@ export function OrdersPage() {
   const [unitMeasures, setUnitMeasures] = useState<UnitMeasure[]>([]);
   const [loading, setLoading] = useState(false);
   const [view, setView] = useState<"list" | "form">("list");
+  const [query, setQuery] = useState("");
   const [editing, setEditing] = useState<Order | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [items, setItems] = useState<OrderItem[]>([{ ...EMPTY_ITEM }]);
@@ -192,6 +193,20 @@ export function OrdersPage() {
     }
     setConfirmDelete(null);
   }
+
+  const filteredOrders = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return orders;
+    return orders.filter((order) =>
+      [order.code, order.origin, order.destination, order.customer?.name, order.customer?.lastName, order.status]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(q)),
+    );
+  }, [orders, query]);
+
+  const pendingCount = orders.filter((order) => order.status === "pending").length;
+  const deliveredCount = orders.filter((order) => order.status === "delivered").length;
+  const totalOrderValue = orders.reduce((sum, order) => sum + Number(order.totalPrice || 0), 0);
 
   if (view === "form") {
     return (
@@ -352,9 +367,60 @@ export function OrdersPage() {
           </>
         }
       >
+        <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-medium text-slate-500">Order command center</p>
+                <h2 className="mt-2 text-2xl font-semibold text-slate-950">Keep shipping, delivery, and order value visible.</h2>
+                <p className="mt-2 max-w-xl text-sm leading-6 text-slate-500">
+                  Track pending work, scan recent order volume, and open the exact order you need without digging.
+                </p>
+              </div>
+              <div className="rounded-2xl bg-blue-50 p-3 text-blue-600">
+                <Truck className="h-5 w-5" />
+              </div>
+            </div>
+            <div className="mt-5 grid gap-3 sm:grid-cols-3">
+              <div className="rounded-2xl bg-slate-50 p-4">
+                <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Pending</p>
+                <p className="mt-2 text-2xl font-semibold text-amber-600">{pendingCount}</p>
+              </div>
+              <div className="rounded-2xl bg-slate-50 p-4">
+                <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Delivered</p>
+                <p className="mt-2 text-2xl font-semibold text-emerald-600">{deliveredCount}</p>
+              </div>
+              <div className="rounded-2xl bg-slate-50 p-4">
+                <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Order value</p>
+                <p className="mt-2 text-2xl font-semibold text-slate-950">${totalOrderValue.toFixed(2)}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex items-center gap-3 text-slate-700">
+              <CircleDollarSign className="h-5 w-5 text-slate-400" />
+              <p className="text-sm font-medium">Find an order fast</p>
+            </div>
+            <div className="relative mt-4">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search code, customer, route, status..."
+                className="h-11 w-full rounded-2xl border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm text-slate-900 outline-none transition focus:border-slate-300 focus:bg-white"
+              />
+            </div>
+            <p className="mt-3 text-sm text-slate-500">
+              Showing <span className="font-medium text-slate-900">{filteredOrders.length}</span> of {orders.length} orders.
+            </p>
+          </div>
+        </div>
+
         <PageTable
           columns={columns}
-          data={orders}
+          data={filteredOrders}
           loading={loading}
           emptyMessage="No orders yet."
           emptyAction={<Button size="sm" onClick={openCreate}><Plus className="mr-1 h-4 w-4" /> New Order</Button>}
