@@ -392,18 +392,18 @@ export function OrdersPage() {
           </>
         }
       >
-        <div className="bg-slate-50/70 px-4 py-4 sm:px-5">
-          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Order operations</p>
-              <h2 className="mt-2 text-xl font-semibold text-slate-950">Orders workspace</h2>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
-                Manage order flow with a practical overview, identify pending work fast, and keep delivery progress visible.
+        <div className="border-b border-slate-200 bg-gradient-to-br from-blue-950 via-slate-900 to-slate-800 px-4 py-5 text-white sm:px-5">
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px] xl:items-start">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-blue-200/80">Order operations</p>
+              <h2 className="mt-2 text-2xl font-semibold text-white">Orders workspace</h2>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">
+                Keep order flow visible, identify pending shipments quickly, and manage delivery progress with less friction.
               </p>
             </div>
 
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <label className="mb-2 block text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Search orders</label>
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm">
+              <label className="mb-2 block text-xs font-medium uppercase tracking-[0.16em] text-slate-300">Search orders</label>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <input
@@ -411,27 +411,27 @@ export function OrdersPage() {
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Search code, customer, route..."
-                  className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 text-sm text-slate-900 outline-none transition focus:border-slate-300"
+                  className="h-11 w-full rounded-xl border border-white/10 bg-slate-900/70 pl-10 pr-4 text-sm text-white outline-none transition placeholder:text-slate-400 focus:border-slate-500"
                 />
               </div>
-              <p className="mt-3 text-sm text-slate-500">
-                Showing <span className="font-medium text-slate-900">{filteredOrders.length}</span> of {orders.length} orders.
+              <p className="mt-3 text-sm text-slate-300">
+                Showing <span className="font-medium text-white">{filteredOrders.length}</span> of {orders.length} orders.
               </p>
             </div>
           </div>
 
-          <div className="mt-4 grid gap-4 md:grid-cols-3">
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Pending orders</p>
-              <p className="mt-2 text-3xl font-semibold text-slate-950">{pendingCount}</p>
+          <div className="mt-5 grid gap-3 md:grid-cols-3">
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm">
+              <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-300">Pending orders</p>
+              <p className="mt-2 text-3xl font-semibold text-white">{pendingCount}</p>
             </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Delivered orders</p>
-              <p className="mt-2 text-3xl font-semibold text-slate-950">{deliveredCount}</p>
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm">
+              <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-300">Delivered orders</p>
+              <p className="mt-2 text-3xl font-semibold text-white">{deliveredCount}</p>
             </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Order value</p>
-              <p className="mt-2 text-3xl font-semibold text-slate-950">${totalOrderValue.toFixed(2)}</p>
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm">
+              <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-300">Order value</p>
+              <p className="mt-2 text-3xl font-semibold text-white">${totalOrderValue.toFixed(2)}</p>
             </div>
           </div>
         </div>

@@ -198,44 +198,54 @@ export function CustomersPage() {
           </>
         }
       >
-        <div className="mb-4 grid gap-3 md:grid-cols-3">
-          <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
-            <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Total</p>
-            <p className="mt-1 text-2xl font-semibold text-slate-950">{customers.length}</p>
+        <div className="border-b border-slate-200 bg-gradient-to-br from-emerald-950 via-slate-900 to-slate-800 px-4 py-5 text-white sm:px-5">
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px] xl:items-start">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-200/80">Customer relationships</p>
+              <h2 className="mt-2 text-2xl font-semibold text-white">Customers workspace</h2>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">
+                Keep customer records organized, track contact coverage, and review relationship data without extra clutter.
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm">
+              <label className="mb-2 block text-xs font-medium uppercase tracking-[0.16em] text-slate-300">Search customers</label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search customers..."
+                  className="h-11 w-full rounded-xl border border-white/10 bg-slate-900/70 pl-10 pr-4 text-sm text-white outline-none transition placeholder:text-slate-400 focus:border-slate-500"
+                />
+              </div>
+              <p className="mt-3 text-sm text-slate-300">
+                Showing <span className="font-medium text-white">{filteredCustomers.length}</span> of {customers.length} customers.
+              </p>
+            </div>
           </div>
-          <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
-            <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">With email</p>
-            <p className="mt-1 text-2xl font-semibold text-slate-950">{withEmailCount}</p>
-          </div>
-          <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
-            <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">With phone</p>
-            <p className="mt-1 text-2xl font-semibold text-slate-950">{withPhoneCount}</p>
+
+          <div className="mt-5 grid gap-3 md:grid-cols-3">
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm">
+              <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-300">Total</p>
+              <p className="mt-2 text-3xl font-semibold text-white">{customers.length}</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm">
+              <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-300">With email</p>
+              <p className="mt-2 text-3xl font-semibold text-white">{withEmailCount}</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm">
+              <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-300">With phone</p>
+              <p className="mt-2 text-3xl font-semibold text-white">{withPhoneCount}</p>
+            </div>
           </div>
         </div>
 
         <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div className="border-b border-slate-200 px-4 py-4 sm:px-5">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <div>
-                <h2 className="text-base font-semibold text-slate-950">Customer list</h2>
-                <p className="mt-1 text-sm text-slate-500">Keep customer records, contacts, and onboarding progress easy to review.</p>
-              </div>
-              <div className="w-full lg:w-[320px]">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                  <input
-                    type="text"
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Search customers..."
-                    className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-4 text-sm text-slate-900 outline-none transition focus:border-slate-300"
-                  />
-                </div>
-              </div>
-            </div>
-            <p className="mt-3 text-sm text-slate-500">
-              Showing <span className="font-medium text-slate-900">{filteredCustomers.length}</span> of {customers.length} customers.
-            </p>
+            <h2 className="text-base font-semibold text-slate-950">Customer list</h2>
+            <p className="mt-1 text-sm text-slate-500">Keep customer records, contacts, and onboarding progress easy to review.</p>
           </div>
 
           <PageTable

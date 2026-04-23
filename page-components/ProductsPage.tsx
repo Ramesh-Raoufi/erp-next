@@ -284,18 +284,18 @@ export function ProductsPage() {
           </>
         }
       >
-        <div className="bg-slate-50/70 px-4 py-4 sm:px-5">
-          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Catalog management</p>
-              <h2 className="mt-2 text-xl font-semibold text-slate-950">Products workspace</h2>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
-                Manage your catalog with a practical workflow, keep stock visible, and review product records in one focused place.
+        <div className="border-b border-slate-200 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 px-4 py-5 text-white sm:px-5">
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px] xl:items-start">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-300">Catalog management</p>
+              <h2 className="mt-2 text-2xl font-semibold text-white">Products workspace</h2>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">
+                Organize your catalog, monitor inventory health, and keep product records easy to manage.
               </p>
             </div>
 
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <label className="mb-2 block text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Search products</label>
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm">
+              <label className="mb-2 block text-xs font-medium uppercase tracking-[0.16em] text-slate-300">Search products</label>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <input
@@ -303,27 +303,27 @@ export function ProductsPage() {
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Search name, code, category..."
-                  className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 text-sm text-slate-900 outline-none transition focus:border-slate-300"
+                  className="h-11 w-full rounded-xl border border-white/10 bg-slate-900/70 pl-10 pr-4 text-sm text-white outline-none transition placeholder:text-slate-400 focus:border-slate-500"
                 />
               </div>
-              <p className="mt-3 text-sm text-slate-500">
-                Showing <span className="font-medium text-slate-900">{filteredProducts.length}</span> of {products.length} products.
+              <p className="mt-3 text-sm text-slate-300">
+                Showing <span className="font-medium text-white">{filteredProducts.length}</span> of {products.length} products.
               </p>
             </div>
           </div>
 
-          <div className="mt-4 grid gap-4 md:grid-cols-3">
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Active products</p>
-              <p className="mt-2 text-3xl font-semibold text-slate-950">{activeCount}</p>
+          <div className="mt-5 grid gap-3 md:grid-cols-3">
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm">
+              <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-300">Active products</p>
+              <p className="mt-2 text-3xl font-semibold text-white">{activeCount}</p>
             </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Low stock items</p>
-              <p className="mt-2 text-3xl font-semibold text-slate-950">{lowStockCount}</p>
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm">
+              <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-300">Low stock items</p>
+              <p className="mt-2 text-3xl font-semibold text-white">{lowStockCount}</p>
             </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Inventory value</p>
-              <p className="mt-2 text-3xl font-semibold text-slate-950">${inventoryValue.toFixed(2)}</p>
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm">
+              <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-300">Inventory value</p>
+              <p className="mt-2 text-3xl font-semibold text-white">${inventoryValue.toFixed(2)}</p>
             </div>
           </div>
         </div>
