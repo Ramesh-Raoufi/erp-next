@@ -1,6 +1,6 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
-import { Printer, Plus, RefreshCw, PlusCircle } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Printer, Plus, RefreshCw, PlusCircle, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { api } from "@/lib/api";
@@ -85,6 +85,7 @@ export function InvoicesPage() {
   const [loading, setLoading] = useState(false);
   const [printInvoice, setPrintInvoice] = useState<Invoice | null>(null);
   const [view, setView] = useState<"list" | "form">("list");
+  const [query, setQuery] = useState("");
   const [editInvoice, setEditInvoice] = useState<Invoice | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [items, setItems] = useState<InvoiceItem[]>([{ ...EMPTY_ITEM }]);
@@ -225,6 +226,20 @@ export function InvoicesPage() {
     }
     setConfirmDelete(null);
   }
+
+  const filteredInvoices = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return invoices;
+    return invoices.filter((invoice) =>
+      [invoice.code, invoice.customer?.name, invoice.customer?.lastName, invoice.order?.code, invoice.status, invoice.total]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(q)),
+    );
+  }, [invoices, query]);
+
+  const paidCount = invoices.filter((invoice) => invoice.status === "paid").length;
+  const overdueCount = invoices.filter((invoice) => invoice.status === "overdue").length;
+  const invoiceVolume = invoices.reduce((sum, invoice) => sum + Number(invoice.total || 0), 0);
 
   // ──────────────────────────────────────────────────────────────
   // FORM VIEW
@@ -410,13 +425,29 @@ export function InvoicesPage() {
   // LIST VIEW
   // ──────────────────────────────────────────────────────────────
   const columns: TableColumn<Invoice>[] = [
-    { key: "id", label: "#", width: "60px", render: (r) => <span className="font-mono text-xs text-gray-400">{r.id}</span> },
-    { key: "code", label: "Code", render: (r) => r.code ?? "—" },
-    { key: "customer", label: "Customer", render: (r) => r.customer ? `${r.customer.name}${r.customer.lastName ? " " + r.customer.lastName : ""}` : String(r.customerId) },
-    { key: "total", label: "Total", align: "right", render: (r) => <span className="font-semibold">${Number(r.total).toFixed(2)}</span> },
+    {
+      key: "invoice",
+      label: "Invoice",
+      render: (r) => (
+        <div className="min-w-[140px]">
+          <p className="font-medium text-slate-900">{r.code ?? `#${r.id}`}</p>
+          <p className="text-xs text-slate-500">Created {formatDate(r.createdAt)}</p>
+        </div>
+      ),
+    },
+    {
+      key: "customer",
+      label: "Customer",
+      render: (r) => (
+        <div>
+          <p className="font-medium text-slate-900">{r.customer ? `${r.customer.name}${r.customer.lastName ? " " + r.customer.lastName : ""}` : `Customer #${r.customerId}`}</p>
+          <p className="text-xs text-slate-500">{r.order?.code ? `Linked to ${r.order.code}` : "No linked order"}</p>
+        </div>
+      ),
+    },
+    { key: "total", label: "Total", align: "right", render: (r) => <span className="font-semibold text-slate-900">${Number(r.total).toFixed(2)}</span> },
     { key: "status", label: "Status", render: (r) => <StatusBadge status={r.status} /> },
-    { key: "dueDate", label: "Due Date", render: (r) => r.dueDate ? new Date(r.dueDate).toLocaleDateString() : "—" },
-    { key: "createdAt", label: "Created", render: (r) => formatDate(r.createdAt) },
+    { key: "dueDate", label: "Due", render: (r) => <span className="text-slate-900">{r.dueDate ? new Date(r.dueDate).toLocaleDateString() : "—"}</span> },
   ];
 
   return (
@@ -433,20 +464,61 @@ export function InvoicesPage() {
           </>
         }
       >
-        <PageTable
-          columns={columns}
-          data={invoices}
-          loading={loading}
-          emptyMessage="No invoices yet"
-          emptyAction={<Button size="sm" onClick={openCreate}><Plus className="mr-1 h-4 w-4" /> New Invoice</Button>}
-          onEdit={openEdit}
-          onDelete={(inv) => setConfirmDelete({ id: inv.id, label: inv.code ? `Invoice ${inv.code}` : `Invoice #${inv.id}` })}
-          actions={(inv) => (
-            <Button variant="outline" size="sm" onClick={() => setPrintInvoice(inv)} title="Print">
-              <Printer className="h-4 w-4" />
-            </Button>
-          )}
-        />
+        <div className="mb-4 grid gap-3 md:grid-cols-3">
+          <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+            <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Paid</p>
+            <p className="mt-1 text-2xl font-semibold text-slate-950">{paidCount}</p>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+            <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Overdue</p>
+            <p className="mt-1 text-2xl font-semibold text-slate-950">{overdueCount}</p>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+            <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Invoice value</p>
+            <p className="mt-1 text-2xl font-semibold text-slate-950">${invoiceVolume.toFixed(2)}</p>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="border-b border-slate-200 px-4 py-4 sm:px-5">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <h2 className="text-base font-semibold text-slate-950">Invoice list</h2>
+                <p className="mt-1 text-sm text-slate-500">Track issued invoices, customer links, due dates, and payment status in one place.</p>
+              </div>
+              <div className="w-full lg:w-[320px]">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Search invoices..."
+                    className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-4 text-sm text-slate-900 outline-none transition focus:border-slate-300"
+                  />
+                </div>
+              </div>
+            </div>
+            <p className="mt-3 text-sm text-slate-500">
+              Showing <span className="font-medium text-slate-900">{filteredInvoices.length}</span> of {invoices.length} invoices.
+            </p>
+          </div>
+
+          <PageTable
+            columns={columns}
+            data={filteredInvoices}
+            loading={loading}
+            emptyMessage="No invoices yet. Create your first invoice to start tracking receivables."
+            emptyAction={<Button size="sm" onClick={openCreate}><Plus className="mr-1 h-4 w-4" /> New Invoice</Button>}
+            onEdit={openEdit}
+            onDelete={(inv) => setConfirmDelete({ id: inv.id, label: inv.code ? `Invoice ${inv.code}` : `Invoice #${inv.id}` })}
+            actions={(inv) => (
+              <Button variant="outline" size="sm" onClick={() => setPrintInvoice(inv)} title="Print">
+                <Printer className="h-4 w-4" />
+              </Button>
+            )}
+          />
+        </div>
       </CrudLayout>
 
       <AlertDialog open={!!confirmDelete} onOpenChange={(o) => !o && setConfirmDelete(null)}>
