@@ -395,10 +395,10 @@ export function OrdersPage() {
         <div className="grid gap-0 xl:grid-cols-[300px_minmax(0,1fr)]">
           <aside className="border-b border-slate-200 bg-slate-50/70 xl:border-b-0 xl:border-r">
             <div className="p-5">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Overview</p>
-              <h2 className="mt-2 text-lg font-semibold text-slate-950">Order operations</h2>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Operations</p>
+              <h2 className="mt-2 text-lg font-semibold text-slate-950">Order workflow</h2>
               <p className="mt-2 text-sm leading-6 text-slate-500">
-                Focus on shipment flow, delivery completion, and total order activity from one workspace.
+                Review current shipment volume, delivery progress, and the orders that need action first.
               </p>
             </div>
 
