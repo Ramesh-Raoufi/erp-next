@@ -1,6 +1,6 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
-import { Plus, RefreshCw } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Plus, RefreshCw, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { api } from "@/lib/api";
@@ -57,6 +57,7 @@ export function TransfersPage() {
   const [driverRefs, setDriverRefs] = useState<DriverRef[]>([]);
   const [loading, setLoading] = useState(false);
   const [view, setView] = useState<"list" | "form">("list");
+  const [query, setQuery] = useState("");
   const [editing, setEditing] = useState<Transfer | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -154,6 +155,20 @@ export function TransfersPage() {
     setConfirmDelete(null);
   }
 
+  const filteredTransfers = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return transfers;
+    return transfers.filter((transfer) =>
+      [transfer.code, transfer.order?.code, transfer.driver?.name, transfer.status]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(q)),
+    );
+  }, [transfers, query]);
+
+  const assignedCount = transfers.filter((transfer) => transfer.status === "assigned").length;
+  const inTransitCount = transfers.filter((transfer) => transfer.status === "in_transit").length;
+  const completedCount = transfers.filter((transfer) => transfer.status === "completed").length;
+
   if (view === "form") {
     return (
       <PageForm
@@ -238,12 +253,28 @@ export function TransfersPage() {
   }
 
   const columns: TableColumn<Transfer>[] = [
-    { key: "code", label: "Code", render: (r) => r.code ?? "—" },
-    { key: "order", label: "Order", render: (r) => r.order?.code ? r.order.code : `#${r.orderId}` },
-    { key: "driver", label: "Driver", render: (r) => r.driver?.name ?? "—" },
+    {
+      key: "transfer",
+      label: "Transfer",
+      render: (r) => (
+        <div className="min-w-[140px]">
+          <p className="font-medium text-slate-900">{r.code ?? `#${r.id}`}</p>
+          <p className="text-xs text-slate-500">Order {r.order?.code ? r.order.code : `#${r.orderId}`}</p>
+        </div>
+      ),
+    },
+    {
+      key: "driver",
+      label: "Driver",
+      render: (r) => (
+        <div>
+          <p className="font-medium text-slate-900">{r.driver?.name ?? "Unassigned"}</p>
+          <p className="text-xs text-slate-500">{r.shippedAt ? `Shipped ${formatDate(r.shippedAt)}` : "Not shipped yet"}</p>
+        </div>
+      ),
+    },
     { key: "status", label: "Status", render: (r) => <StatusBadge status={r.status} /> },
-    { key: "shippedAt", label: "Shipped", render: (r) => r.shippedAt ? formatDate(r.shippedAt) : "—" },
-    { key: "deliveredAt", label: "Delivered", render: (r) => r.deliveredAt ? formatDate(r.deliveredAt) : "—" },
+    { key: "deliveredAt", label: "Delivered", render: (r) => <span className="text-slate-900">{r.deliveredAt ? formatDate(r.deliveredAt) : "—"}</span> },
   ];
 
   return (
@@ -260,15 +291,56 @@ export function TransfersPage() {
           </>
         }
       >
-        <PageTable
-          columns={columns}
-          data={transfers}
-          loading={loading}
-          emptyMessage="No transfers yet."
-          emptyAction={<Button size="sm" onClick={openCreate}><Plus className="mr-1 h-4 w-4" /> New Transfer</Button>}
-          onEdit={openEdit}
-          onDelete={(t) => setConfirmDelete({ id: t.id, label: t.code ? `Transfer ${t.code}` : `Transfer #${t.id}` })}
-        />
+        <div className="mb-4 grid gap-3 md:grid-cols-3">
+          <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+            <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Assigned</p>
+            <p className="mt-1 text-2xl font-semibold text-slate-950">{assignedCount}</p>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+            <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">In transit</p>
+            <p className="mt-1 text-2xl font-semibold text-slate-950">{inTransitCount}</p>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+            <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Completed</p>
+            <p className="mt-1 text-2xl font-semibold text-slate-950">{completedCount}</p>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="border-b border-slate-200 px-4 py-4 sm:px-5">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <h2 className="text-base font-semibold text-slate-950">Transfer list</h2>
+                <p className="mt-1 text-sm text-slate-500">Monitor assigned shipments, delivery progress, and transport ownership in one place.</p>
+              </div>
+              <div className="w-full lg:w-[320px]">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Search transfers..."
+                    className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-4 text-sm text-slate-900 outline-none transition focus:border-slate-300"
+                  />
+                </div>
+              </div>
+            </div>
+            <p className="mt-3 text-sm text-slate-500">
+              Showing <span className="font-medium text-slate-900">{filteredTransfers.length}</span> of {transfers.length} transfers.
+            </p>
+          </div>
+
+          <PageTable
+            columns={columns}
+            data={filteredTransfers}
+            loading={loading}
+            emptyMessage="No transfers yet. Create your first transfer to start shipment tracking."
+            emptyAction={<Button size="sm" onClick={openCreate}><Plus className="mr-1 h-4 w-4" /> New Transfer</Button>}
+            onEdit={openEdit}
+            onDelete={(t) => setConfirmDelete({ id: t.id, label: t.code ? `Transfer ${t.code}` : `Transfer #${t.id}` })}
+          />
+        </div>
       </CrudLayout>
 
       <AlertDialog open={!!confirmDelete} onOpenChange={(o) => !o && setConfirmDelete(null)}>
