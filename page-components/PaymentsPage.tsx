@@ -1,6 +1,6 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
-import { Plus, RefreshCw } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Plus, RefreshCw, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { api } from "@/lib/api";
@@ -57,6 +57,7 @@ export function PaymentsPage() {
   const [orderRefs, setOrderRefs] = useState<OrderRef[]>([]);
   const [loading, setLoading] = useState(false);
   const [view, setView] = useState<"list" | "form">("list");
+  const [query, setQuery] = useState("");
   const [editing, setEditing] = useState<Payment | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -141,6 +142,20 @@ export function PaymentsPage() {
     setConfirmDelete(null);
   }
 
+  const filteredPayments = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return payments;
+    return payments.filter((payment) =>
+      [payment.code, payment.order?.code, payment.method, payment.status, payment.amount]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(q)),
+    );
+  }, [payments, query]);
+
+  const paidCount = payments.filter((payment) => payment.status === "paid").length;
+  const unpaidCount = payments.filter((payment) => payment.status === "unpaid").length;
+  const paymentVolume = payments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
+
   if (view === "form") {
     return (
       <PageForm
@@ -200,12 +215,29 @@ export function PaymentsPage() {
   }
 
   const columns: TableColumn<Payment>[] = [
-    { key: "code", label: "Code", render: (r) => r.code ?? "—" },
-    { key: "order", label: "Order", render: (r) => r.order?.code ?? `#${r.orderId}` },
-    { key: "amount", label: "Amount", align: "right", render: (r) => `$${Number(r.amount).toFixed(2)}` },
+    {
+      key: "payment",
+      label: "Payment",
+      render: (r) => (
+        <div className="min-w-[140px]">
+          <p className="font-medium text-slate-900">{r.code ?? `#${r.id}`}</p>
+          <p className="text-xs text-slate-500">{r.paidAt ? formatDate(r.paidAt) : "No payment date"}</p>
+        </div>
+      ),
+    },
+    {
+      key: "order",
+      label: "Order",
+      render: (r) => (
+        <div>
+          <p className="font-medium text-slate-900">{r.order?.code ?? `Order #${r.orderId}`}</p>
+          <p className="text-xs text-slate-500">ID: {r.orderId}</p>
+        </div>
+      ),
+    },
+    { key: "amount", label: "Amount", align: "right", render: (r) => <span className="font-medium text-slate-900">${Number(r.amount).toFixed(2)}</span> },
     { key: "method", label: "Method", render: (r) => <Badge label={r.method} cls={METHOD_STYLES[r.method] ?? "bg-gray-100 text-gray-600"} /> },
     { key: "status", label: "Status", render: (r) => <Badge label={r.status} cls={STATUS_STYLES[r.status] ?? "bg-gray-100 text-gray-600"} /> },
-    { key: "paidAt", label: "Paid At", render: (r) => r.paidAt ? formatDate(r.paidAt) : "—" },
   ];
 
   return (
@@ -222,15 +254,56 @@ export function PaymentsPage() {
           </>
         }
       >
-        <PageTable
-          columns={columns}
-          data={payments}
-          loading={loading}
-          emptyMessage="No payments yet."
-          emptyAction={<Button size="sm" onClick={openCreate}><Plus className="mr-1 h-4 w-4" /> New Payment</Button>}
-          onEdit={openEdit}
-          onDelete={(p) => setConfirmDelete({ id: p.id, label: p.code ? `Payment ${p.code}` : `Payment #${p.id}` })}
-        />
+        <div className="mb-4 grid gap-3 md:grid-cols-3">
+          <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+            <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Paid</p>
+            <p className="mt-1 text-2xl font-semibold text-slate-950">{paidCount}</p>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+            <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Unpaid</p>
+            <p className="mt-1 text-2xl font-semibold text-slate-950">{unpaidCount}</p>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+            <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Volume</p>
+            <p className="mt-1 text-2xl font-semibold text-slate-950">${paymentVolume.toFixed(2)}</p>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="border-b border-slate-200 px-4 py-4 sm:px-5">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <h2 className="text-base font-semibold text-slate-950">Payment list</h2>
+                <p className="mt-1 text-sm text-slate-500">Monitor payment status, collection activity, and linked orders in one place.</p>
+              </div>
+              <div className="w-full lg:w-[320px]">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Search payments..."
+                    className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-4 text-sm text-slate-900 outline-none transition focus:border-slate-300"
+                  />
+                </div>
+              </div>
+            </div>
+            <p className="mt-3 text-sm text-slate-500">
+              Showing <span className="font-medium text-slate-900">{filteredPayments.length}</span> of {payments.length} payments.
+            </p>
+          </div>
+
+          <PageTable
+            columns={columns}
+            data={filteredPayments}
+            loading={loading}
+            emptyMessage="No payments yet. Create your first payment to start tracking collections."
+            emptyAction={<Button size="sm" onClick={openCreate}><Plus className="mr-1 h-4 w-4" /> New Payment</Button>}
+            onEdit={openEdit}
+            onDelete={(p) => setConfirmDelete({ id: p.id, label: p.code ? `Payment ${p.code}` : `Payment #${p.id}` })}
+          />
+        </div>
       </CrudLayout>
 
       <AlertDialog open={!!confirmDelete} onOpenChange={(o) => !o && setConfirmDelete(null)}>

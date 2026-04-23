@@ -1,6 +1,6 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
-import { Plus, RefreshCw } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Plus, RefreshCw, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { api } from "@/lib/api";
@@ -34,6 +34,7 @@ export function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(false);
   const [view, setView] = useState<"list" | "form">("list");
+  const [query, setQuery] = useState("");
   const [editing, setEditing] = useState<Customer | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -108,6 +109,19 @@ export function CustomersPage() {
     setConfirmDelete(null);
   }
 
+  const filteredCustomers = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return customers;
+    return customers.filter((customer) =>
+      [customer.code, customer.name, customer.lastName, customer.email, customer.phone]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(q)),
+    );
+  }, [customers, query]);
+
+  const withEmailCount = customers.filter((customer) => !!customer.email).length;
+  const withPhoneCount = customers.filter((customer) => !!customer.phone).length;
+
   if (view === "form") {
     return (
       <PageForm
@@ -147,10 +161,27 @@ export function CustomersPage() {
   }
 
   const columns: TableColumn<Customer>[] = [
-    { key: "name", label: "Name", render: (r) => `${r.name}${r.lastName ? " " + r.lastName : ""}` },
-    { key: "email", label: "Email", render: (r) => r.email ?? "—" },
-    { key: "phone", label: "Phone", render: (r) => r.phone ?? "—" },
-    { key: "createdAt", label: "Created", render: (r) => formatDate(r.createdAt) },
+    {
+      key: "customer",
+      label: "Customer",
+      render: (r) => (
+        <div className="min-w-[180px]">
+          <p className="font-medium text-slate-900">{`${r.name}${r.lastName ? " " + r.lastName : ""}`}</p>
+          <p className="text-xs text-slate-500">{r.code ?? "No code"}</p>
+        </div>
+      ),
+    },
+    {
+      key: "contact",
+      label: "Contact",
+      render: (r) => (
+        <div>
+          <p className="text-slate-900">{r.email ?? "No email"}</p>
+          <p className="text-xs text-slate-500">{r.phone ?? "No phone"}</p>
+        </div>
+      ),
+    },
+    { key: "createdAt", label: "Created", render: (r) => <span className="text-slate-900">{formatDate(r.createdAt)}</span> },
   ];
 
   return (
@@ -167,15 +198,56 @@ export function CustomersPage() {
           </>
         }
       >
-        <PageTable
-          columns={columns}
-          data={customers}
-          loading={loading}
-          emptyMessage="No customers yet. Add your first customer."
-          emptyAction={<Button size="sm" onClick={openCreate}><Plus className="mr-1 h-4 w-4" /> New Customer</Button>}
-          onEdit={openEdit}
-          onDelete={(c) => setConfirmDelete({ id: c.id, label: c.name })}
-        />
+        <div className="mb-4 grid gap-3 md:grid-cols-3">
+          <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+            <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Total</p>
+            <p className="mt-1 text-2xl font-semibold text-slate-950">{customers.length}</p>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+            <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">With email</p>
+            <p className="mt-1 text-2xl font-semibold text-slate-950">{withEmailCount}</p>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+            <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">With phone</p>
+            <p className="mt-1 text-2xl font-semibold text-slate-950">{withPhoneCount}</p>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="border-b border-slate-200 px-4 py-4 sm:px-5">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <h2 className="text-base font-semibold text-slate-950">Customer list</h2>
+                <p className="mt-1 text-sm text-slate-500">Keep customer records, contacts, and onboarding progress easy to review.</p>
+              </div>
+              <div className="w-full lg:w-[320px]">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Search customers..."
+                    className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-4 text-sm text-slate-900 outline-none transition focus:border-slate-300"
+                  />
+                </div>
+              </div>
+            </div>
+            <p className="mt-3 text-sm text-slate-500">
+              Showing <span className="font-medium text-slate-900">{filteredCustomers.length}</span> of {customers.length} customers.
+            </p>
+          </div>
+
+          <PageTable
+            columns={columns}
+            data={filteredCustomers}
+            loading={loading}
+            emptyMessage="No customers yet. Add your first customer to start managing relationships."
+            emptyAction={<Button size="sm" onClick={openCreate}><Plus className="mr-1 h-4 w-4" /> New Customer</Button>}
+            onEdit={openEdit}
+            onDelete={(c) => setConfirmDelete({ id: c.id, label: c.name })}
+          />
+        </div>
       </CrudLayout>
 
       <AlertDialog open={!!confirmDelete} onOpenChange={(o) => !o && setConfirmDelete(null)}>
