@@ -392,29 +392,30 @@ export function OrdersPage() {
           </>
         }
       >
-        <div className="mb-4 grid gap-3 md:grid-cols-3">
-          <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+        <div className="mb-4 grid gap-3 lg:grid-cols-3">
+          <div className="rounded-xl border border-slate-200 bg-white px-4 py-4 shadow-sm">
             <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Pending</p>
-            <p className="mt-1 text-2xl font-semibold text-slate-950">{pendingCount}</p>
+            <p className="mt-2 text-2xl font-semibold text-slate-950">{pendingCount}</p>
           </div>
-          <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+          <div className="rounded-xl border border-slate-200 bg-white px-4 py-4 shadow-sm">
             <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Delivered</p>
-            <p className="mt-1 text-2xl font-semibold text-slate-950">{deliveredCount}</p>
+            <p className="mt-2 text-2xl font-semibold text-slate-950">{deliveredCount}</p>
           </div>
-          <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+          <div className="rounded-xl border border-slate-200 bg-white px-4 py-4 shadow-sm">
             <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Order value</p>
-            <p className="mt-1 text-2xl font-semibold text-slate-950">${totalOrderValue.toFixed(2)}</p>
+            <p className="mt-2 text-2xl font-semibold text-slate-950">${totalOrderValue.toFixed(2)}</p>
           </div>
         </div>
 
         <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div className="border-b border-slate-200 px-4 py-4 sm:px-5">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <div>
+            <div className="grid gap-3 lg:grid-cols-3 lg:items-end">
+              <div className="lg:col-span-2">
                 <h2 className="text-base font-semibold text-slate-950">Order list</h2>
                 <p className="mt-1 text-sm text-slate-500">Track orders, route details, and customer activity in one table.</p>
               </div>
-              <div className="w-full lg:w-[320px]">
+              <div>
+                <label className="mb-2 block text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Search</label>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                   <input
