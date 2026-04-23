@@ -1,6 +1,19 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+function getStoredToken() {
+  return typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
+}
+
+function normalizeApiError(status: number, text: string) {
+  const message = text.trim();
+  if (status === 401) return "Your session expired. Please sign in again.";
+  if (status === 403) return "You do not have permission to do that.";
+  if (status === 404) return "The requested resource was not found.";
+  if (status >= 500) return "The server hit an error. Please try again.";
+  return message || `HTTP ${status}`;
+}
+
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
+  const token = getStoredToken();
   const res = await fetch(path, {
     headers: {
       "Content-Type": "application/json",
@@ -12,7 +25,11 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    throw new Error(text || `HTTP ${res.status}`);
+    throw new Error(normalizeApiError(res.status, text));
+  }
+
+  if (res.status === 204) {
+    return undefined as T;
   }
 
   return (await res.json()) as T;
@@ -88,6 +105,10 @@ function buildQuery(params: Record<string, string | number | undefined>) {
 export const api = {
   health() {
     return apiFetch<{ ok: boolean }>("/api/health");
+  },
+
+  hasToken() {
+    return Boolean(getStoredToken());
   },
 
   auth: {
